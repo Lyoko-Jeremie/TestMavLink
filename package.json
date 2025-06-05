@@ -1,0 +1,19 @@
+{
+  "name": "TestMavLink",
+  "version": "1.0.0",
+  "description": "",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc",
+    "build:w": "tsc --watch",
+    "run:ts": "node dist/index.js"
+  },
+  "dependencies": {
+    "node-mavlink": "^2.1.0",
+    "serialport": "^13.0.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.8.3"
+  },
+  "private": true
+}
