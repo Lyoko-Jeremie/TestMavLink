@@ -58,7 +58,7 @@ export class MavLinkPacket2Data {
 
     public observable(s: Observable<MavLinkPacket>): Observable<MavLinkData> {
         return s.pipe(
-            map(T => (packet: MavLinkPacket) => {
+            map((packet: MavLinkPacket) => {
                 return this.process(packet);
             }),
             filter(T => T !== undefined),
@@ -128,7 +128,11 @@ export class CustomProtocolTransformManager {
 
         // from SerialPort
         // 创建一个 PassThrough 流，用于从 SerialPort 读取数据，并加入自定义协议解析器
-        this.customProtocolReadStream = port.pipe(new CustomProtocolTransformFromSerialPort(false)).pipe(new PassThrough());
+        this.customProtocolReadStream = new PassThrough({
+            readableObjectMode: true,
+            writableObjectMode: true,
+        })
+        port.pipe(new CustomProtocolTransformFromSerialPort(false)).pipe(this.customProtocolReadStream);
 
         this.customProtocolReadStream.on('data', (data: CustomProtocolPackage) => {
             this.onPacket(data);
