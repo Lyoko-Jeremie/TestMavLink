@@ -180,7 +180,7 @@ export class CustomProtocolTransformManager {
      * @returns 是否发送成功
      */
     public async sendMsg(msg: MavLinkData, targetId: number): Promise<boolean> {
-        if (targetId && 0xFF !== targetId) {
+        if ((targetId & 0xFF) !== targetId) {
             console.error('[CPT] sendMsg invalid targetId :', targetId);
             return false;
         }
