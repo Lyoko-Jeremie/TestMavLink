@@ -23,12 +23,14 @@ const port = new SerialPort({path: 'COM4', baudRate: 115200});
 
 const m = new CustomProtocolTransformManager(port, new MavLinkProtocolV2(), REGISTRY);
 
+// 接收id 0 的数据
 m.getDecoderStream(0).observableData.subscribe({
     next: (data) => {
         // 处理接收到的数据
         console.log('====== Received data [0]:', data);
     },
 });
+// 接收id 1 的数据
 m.getDecoderStream(1).observableData.subscribe({
     next: (data) => {
         // 处理接收到的数据
@@ -49,8 +51,10 @@ port.on('open', async () => {
     console.log('====== commandHeartbeat');
     const commandHeartbeat = new minimal.Heartbeat();
     commandHeartbeat.systemStatus = minimal.MavState.STANDBY;
+    // 将心跳包发送到设备ID 0
     await m.sendMsg(commandHeartbeat, 0);
     commandHeartbeat.systemStatus = minimal.MavState.BOOT;
+    // 将心跳包发送到设备ID 1
     await m.sendMsg(commandHeartbeat, 1);
 
     // 模拟等待一段时间
@@ -61,10 +65,12 @@ port.on('open', async () => {
     const commandSystemTime = new common.SystemTime();
     commandSystemTime.timeUnixUsec = BigInt(Date.now()) * BigInt(1000);
     commandSystemTime.timeBootMs = process.uptime() * 1000;
+    // 将包发送到设备ID 0
     await m.sendMsg(commandSystemTime, 0);
     await sleep(500);
     commandSystemTime.timeUnixUsec = BigInt(Date.now()) * BigInt(1000);
     commandSystemTime.timeBootMs = process.uptime() * 1000;
+    // 将包发送到设备ID 1
     await m.sendMsg(commandSystemTime, 1);
 
     console.log('====== sendEnd');
