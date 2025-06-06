@@ -26,7 +26,13 @@ const m = new CustomProtocolTransformManager(port, new MavLinkProtocolV2(), REGI
 m.getDecoderStream(0).observableData.subscribe({
     next: (data) => {
         // 处理接收到的数据
-        console.log('====== Received data:', data);
+        console.log('====== Received data [0]:', data);
+    },
+});
+m.getDecoderStream(1).observableData.subscribe({
+    next: (data) => {
+        // 处理接收到的数据
+        console.log('====== Received data [1]:', data);
     },
 });
 
@@ -44,6 +50,8 @@ port.on('open', async () => {
     const commandHeartbeat = new minimal.Heartbeat();
     commandHeartbeat.systemStatus = minimal.MavState.STANDBY;
     await m.sendMsg(commandHeartbeat, 0);
+    commandHeartbeat.systemStatus = minimal.MavState.BOOT;
+    await m.sendMsg(commandHeartbeat, 1);
 
     // 模拟等待一段时间
     await sleep(500);
@@ -54,6 +62,10 @@ port.on('open', async () => {
     commandSystemTime.timeUnixUsec = BigInt(Date.now()) * BigInt(1000);
     commandSystemTime.timeBootMs = process.uptime() * 1000;
     await m.sendMsg(commandSystemTime, 0);
+    await sleep(500);
+    commandSystemTime.timeUnixUsec = BigInt(Date.now()) * BigInt(1000);
+    commandSystemTime.timeBootMs = process.uptime() * 1000;
+    await m.sendMsg(commandSystemTime, 1);
 
     console.log('====== sendEnd');
 });
