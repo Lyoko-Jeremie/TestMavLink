@@ -11,9 +11,15 @@ importers:
       node-mavlink:
         specifier: ^2.1.0
         version: 2.1.0(@types/node@22.15.29)(typescript@5.8.3)
+      rxjs:
+        specifier: ^7.8.2
+        version: 7.8.2
       serialport:
         specifier: ^13.0.0
         version: 13.0.0
+      tsafe:
+        specifier: ^1.8.5
+        version: 1.8.5
     devDependencies:
       typescript:
         specifier: ^5.8.3
@@ -169,6 +175,9 @@ packages:
   node-mavlink@2.1.0:
     resolution: {integrity: sha512-XQCczO3zZJO044www4VACitT+EcB5BSILVz3INiZIqPczh2aEkx5h7oTXbRPqFUziKGZ+5ZGm+KDpZEE7eZihg==}
 
+  rxjs@7.8.2:
+    resolution: {integrity: sha512-dhKf903U/PQZY6boNNtAGdWbG85WAbjT/1xYoZIC7FAY0yWapOBQVsVrDl58W86//e1VpMNBtRV4MaXfdMySFA==}
+
   sax@1.4.1:
     resolution: {integrity: sha512-+aWOz7yVScEGoKNd4PA10LZ8sk0A/z5+nXQG5giUO5rprX9jgYsTdov9qCchZiPIZezbZH+jRut8nPodFAX4Jg==}
 
@@ -189,6 +198,12 @@ packages:
         optional: true
       '@swc/wasm':
         optional: true
+
+  tsafe@1.8.5:
+    resolution: {integrity: sha512-LFWTWQrW6rwSY+IBNFl2ridGfUzVsPwrZ26T4KUJww/py8rzaQ/SY+MIz6YROozpUCaRcuISqagmlwub9YT9kw==}
+
+  tslib@2.8.1:
+    resolution: {integrity: sha512-oJFu94HQb+KVduSUQL7wnpmqnfmLsOA/nAh6b6EH0wCEoK0/mPeXU6c3wKDV83MkOuHPRHtSXKKU99IBazS/2w==}
 
   typescript@5.8.3:
     resolution: {integrity: sha512-p1diW6TqL9L07nNxvRMM7hMMw4c5XOo/1ibL4aAIGmSAt9slTE1Xgw5KWuof2uTOvCg9BY7ZRi+GaF+7sfgPeQ==}
@@ -350,6 +365,10 @@ snapshots:
       - '@types/node'
       - typescript
 
+  rxjs@7.8.2:
+    dependencies:
+      tslib: 2.8.1
+
   sax@1.4.1: {}
 
   serialport@13.0.0:
@@ -388,6 +407,10 @@ snapshots:
       typescript: 5.8.3
       v8-compile-cache-lib: 3.0.1
       yn: 3.1.1
+
+  tsafe@1.8.5: {}
+
+  tslib@2.8.1: {}
 
   typescript@5.8.3: {}
 

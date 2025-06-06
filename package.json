@@ -10,7 +10,9 @@
   },
   "dependencies": {
     "node-mavlink": "^2.1.0",
-    "serialport": "^13.0.0"
+    "rxjs": "^7.8.2",
+    "serialport": "^13.0.0",
+    "tsafe": "^1.8.5"
   },
   "devDependencies": {
     "typescript": "^5.8.3"
