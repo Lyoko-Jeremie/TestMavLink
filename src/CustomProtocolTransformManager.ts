@@ -119,6 +119,8 @@ export class CustomProtocolTransformManager {
 
     private mavLinkDecodeStreamTable: Map<number, MavLinkDecodeStream> = new Map<number, MavLinkDecodeStream>();
 
+    mavLinkAllDataSubject: Subject<{ id: number, data: MavLinkData }> = new Subject();
+
     constructor(
         public port: Duplex,
         public protocol: MavLinkProtocol,
@@ -156,6 +158,9 @@ export class CustomProtocolTransformManager {
         if (!mavLinkDecodeStream) {
             mavLinkDecodeStream = new MavLinkDecodeStream(this.REGISTRY);
             this.mavLinkDecodeStreamTable.set(pack.id, mavLinkDecodeStream);
+            mavLinkDecodeStream.observableData.pipe(map(T => {
+                return {id: pack.id, data: T};
+            })).subscribe(this.mavLinkAllDataSubject);
         }
 
         // 将数据写入对应的 mavLinkDecodeStream
@@ -168,9 +173,16 @@ export class CustomProtocolTransformManager {
         if (!mavLinkDecodeStream) {
             mavLinkDecodeStream = new MavLinkDecodeStream(this.REGISTRY);
             this.mavLinkDecodeStreamTable.set(deviceId, mavLinkDecodeStream);
+            mavLinkDecodeStream.observableData.pipe(map(T => {
+                return {id: deviceId, data: T};
+            })).subscribe(this.mavLinkAllDataSubject);
         }
 
         return mavLinkDecodeStream;
+    }
+
+    getMavLinkAllDataObservable() {
+        return this.mavLinkAllDataSubject.asObservable();
     }
 
     /**

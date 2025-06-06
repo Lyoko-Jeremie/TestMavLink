@@ -37,6 +37,12 @@ m.getDecoderStream(1).observableData.subscribe({
         console.log('====== Received data [1]:', data);
     },
 });
+m.getMavLinkAllDataObservable().subscribe({
+    next: (data) => {
+        // 处理接收到的所有数据
+        console.log('====== Received data [all]:', data);
+    },
+});
 
 // sleep 函数，可用在下面的代码中来模拟延时操作
 async function sleep(ms: number): Promise<void> {
