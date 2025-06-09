@@ -64,7 +64,7 @@ port.on('open', async () => {
     await m.sendMsg(commandHeartbeat, 1);
 
     commandHeartbeat.systemStatus = minimal.MavState.POWEROFF;
-    // 将心跳包发送到设备ID 1
+    // 将心跳包发送到设备ID 3
     await m.sendMsg(commandHeartbeat, 3);
 
     // 模拟等待一段时间
