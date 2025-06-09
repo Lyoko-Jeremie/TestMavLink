@@ -30,7 +30,7 @@ export class MavLinkPacket2DataTransform extends Transform {
     }
 }
 
-interface PackAndDataType {
+export interface PackAndDataType {
     packet: MavLinkPacket;
     data: MavLinkData;
 }
@@ -147,6 +147,14 @@ export class MavLinkDecodeStream {
         ).observable();
     }
 
+    public get observablePackAndData(): Observable<PackAndDataType> {
+        return MavLinkPacket2Data.create(
+            this.REGISTRY,
+            this.mavLinkDecodeStream,
+            this.mavLinkPacketObservable,
+        ).observablePackAndData();
+    }
+
 }
 
 export class CustomProtocolTransformManager {
@@ -159,6 +167,7 @@ export class CustomProtocolTransformManager {
     private mavLinkDecodeStreamTable: Map<number, MavLinkDecodeStream> = new Map<number, MavLinkDecodeStream>();
 
     mavLinkAllDataSubject: Subject<{ id: number, data: MavLinkData }> = new Subject();
+    mavLinkAllPackAndDataSubject: Subject<{ id: number, packAndData: PackAndDataType }> = new Subject();
 
     constructor(
         public port: Duplex,
@@ -200,6 +209,9 @@ export class CustomProtocolTransformManager {
             mavLinkDecodeStream.observableData.pipe(map(T => {
                 return {id: pack.id, data: T};
             })).subscribe(this.mavLinkAllDataSubject);
+            mavLinkDecodeStream.observablePackAndData.pipe(map(T => {
+                return {id: pack.id, packAndData: T};
+            })).subscribe(this.mavLinkAllPackAndDataSubject);
         }
 
         // 将数据写入对应的 mavLinkDecodeStream
@@ -215,6 +227,9 @@ export class CustomProtocolTransformManager {
             mavLinkDecodeStream.observableData.pipe(map(T => {
                 return {id: deviceId, data: T};
             })).subscribe(this.mavLinkAllDataSubject);
+            mavLinkDecodeStream.observablePackAndData.pipe(map(T => {
+                return {id: deviceId, packAndData: T};
+            })).subscribe(this.mavLinkAllPackAndDataSubject);
         }
 
         return mavLinkDecodeStream;
@@ -222,6 +237,10 @@ export class CustomProtocolTransformManager {
 
     getMavLinkAllDataObservable() {
         return this.mavLinkAllDataSubject.asObservable();
+    }
+
+    getMavLinkAllPackAndDataObservable() {
+        return this.mavLinkAllPackAndDataSubject;
     }
 
     /**

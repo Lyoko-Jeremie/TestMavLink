@@ -7,6 +7,7 @@ import {
     minimal,
 } from 'node-mavlink';
 import {CustomProtocolTransformManager} from "./CustomProtocolTransformManager";
+import {MavStateCollector} from "./MavStateCollector";
 
 console.log('Hello World ✨');
 
@@ -43,6 +44,10 @@ m.getMavLinkAllDataObservable().subscribe({
         console.log('====== Received data [all]:', data);
     },
 });
+
+const mavStateCollector = new MavStateCollector(m);
+// mavStateCollector.getStateInfo(0);
+
 
 // sleep 函数，可用在下面的代码中来模拟延时操作
 async function sleep(ms: number): Promise<void> {
