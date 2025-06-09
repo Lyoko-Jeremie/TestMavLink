@@ -4,7 +4,7 @@ import {
     MavLinkPacketParser,
     MavLinkPacketRegistry,
     MavLinkPacketSplitter,
-    MavLinkProtocol
+    MavLinkProtocol,
 } from "node-mavlink";
 import {Duplex, PassThrough, Transform, TransformCallback, Stream, Writable} from "stream";
 import {
@@ -30,16 +30,29 @@ export class MavLinkPacket2DataTransform extends Transform {
     }
 }
 
+interface PackAndDataType {
+    packet: MavLinkPacket;
+    data: MavLinkData;
+}
+
 export class MavLinkPacket2Data {
     constructor(
         public REGISTRY: MavLinkPacketRegistry,
+        private mavLinkDecodeStream: PassThrough,
+        private mavLinkPacketObservable: Observable<MavLinkPacket>,
     ) {
     }
 
     static create(
         registry: MavLinkPacketRegistry,
+        mavLinkDecodeStream: PassThrough,
+        mavLinkPacketObservable: Observable<MavLinkPacket>,
     ): MavLinkPacket2Data {
-        return new MavLinkPacket2Data(registry);
+        return new MavLinkPacket2Data(
+            registry,
+            mavLinkDecodeStream,
+            mavLinkPacketObservable,
+        );
     }
 
     public process(packet: MavLinkPacket): MavLinkData | undefined {
@@ -54,17 +67,33 @@ export class MavLinkPacket2Data {
         return undefined;
     }
 
-    public stream<T extends Stream>(s: T): MavLinkPacket2DataTransform {
-        return s.pipe(new MavLinkPacket2DataTransform(this.process.bind(this)));
+    public stream(): MavLinkPacket2DataTransform {
+        return this.mavLinkDecodeStream.pipe(new MavLinkPacket2DataTransform(this.process.bind(this)));
     }
 
-    public observable(s: Observable<MavLinkPacket>): Observable<MavLinkData> {
-        return s.pipe(
-            map((packet: MavLinkPacket) => {
-                return this.process(packet);
+    protected subjectPackAndData?: Observable<PackAndDataType>;
+
+    public observable(): Observable<MavLinkData> {
+        return this.observablePackAndData().pipe(
+            map((d: PackAndDataType) => {
+                return d.data;
             }),
-            filter(T => T !== undefined),
         );
+    }
+
+    public observablePackAndData(): Observable<PackAndDataType> {
+        if (!this.subjectPackAndData) {
+            this.subjectPackAndData = this.mavLinkPacketObservable.pipe(
+                map((packet: MavLinkPacket) => {
+                    return {
+                        packet: packet,
+                        data: this.process(packet),
+                    };
+                }),
+                filter((T): T is PackAndDataType => T.data !== undefined),
+            );
+        }
+        return this.subjectPackAndData;
     }
 }
 
@@ -73,7 +102,7 @@ export class MavLinkDecodeStream {
 
     private outputStream: MavLinkPacketParser;
 
-    private sub: Subject<MavLinkPacket> = new Subject<MavLinkPacket>();
+    private mavLinkPacketObservable: Subject<MavLinkPacket> = new Subject<MavLinkPacket>();
 
     /**
      * 写入 serial port data 数据包到 mavLinkDecodeStream
@@ -90,7 +119,7 @@ export class MavLinkDecodeStream {
             .pipe(new MavLinkPacketParser());
 
         this.outputStream.on('data', (data: MavLinkPacket) => {
-            this.sub.next(data);
+            this.mavLinkPacketObservable.next(data);
         });
     }
 
@@ -99,15 +128,23 @@ export class MavLinkDecodeStream {
     }
 
     public get observablePacket(): Subject<MavLinkPacket> {
-        return this.sub;
+        return this.mavLinkPacketObservable;
     }
 
     public get readDataStream(): PassThrough {
-        return MavLinkPacket2Data.create(this.REGISTRY).stream(this.outputStream);
+        return MavLinkPacket2Data.create(
+            this.REGISTRY,
+            this.mavLinkDecodeStream,
+            this.mavLinkPacketObservable,
+        ).stream();
     }
 
     public get observableData(): Observable<MavLinkData> {
-        return MavLinkPacket2Data.create(this.REGISTRY).observable(this.sub);
+        return MavLinkPacket2Data.create(
+            this.REGISTRY,
+            this.mavLinkDecodeStream,
+            this.mavLinkPacketObservable,
+        ).observable();
     }
 
 }
