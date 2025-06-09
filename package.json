@@ -9,6 +9,7 @@
     "run:ts": "node dist/index.js"
   },
   "dependencies": {
+    "moment": "^2.30.1",
     "node-mavlink": "^2.1.0",
     "rxjs": "^7.8.2",
     "serialport": "^13.0.0",
