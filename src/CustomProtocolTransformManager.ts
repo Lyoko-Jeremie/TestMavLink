@@ -48,6 +48,8 @@ export class MavLinkPacket2Data {
         if (clazz) {
             const data = packet.protocol.data(packet.payload, clazz);
             return data;
+        } else {
+            console.warn('[MavLinkPacket2Data] Cannot decode packet :', packet.header.msgid, packet);
         }
         return undefined;
     }
