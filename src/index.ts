@@ -9,6 +9,11 @@ import {
 import {CustomProtocolTransformManager} from "./CustomProtocolTransformManager";
 import {MavStateCollector} from "./MavStateCollector";
 
+const comPortString = process.env.COM_PORT_STRING || 'COM3';
+
+// console.log('process.env', process.env);
+console.log('comPortString', comPortString);
+
 console.log('Hello World ✨');
 
 // create a registry of mappings between a message id and a data class
@@ -20,7 +25,7 @@ const REGISTRY: MavLinkPacketRegistry = {
 };
 
 // 初始化 SerialPort 实例，替换 path 为你的串口路径，可以使用 UsbTreeView 或从设备管理中查看当前所有串口
-const port = new SerialPort({path: 'COM4', baudRate: 115200});
+const port = new SerialPort({path: comPortString, baudRate: 115200});
 
 const m = new CustomProtocolTransformManager(port, new MavLinkProtocolV2(), REGISTRY);
 
