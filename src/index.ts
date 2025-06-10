@@ -9,6 +9,7 @@ import {
 import {CustomProtocolTransformManager} from "./CustomProtocolTransformManager";
 import {MavStateCollector} from "./MavStateCollector";
 
+// 替换 COM3 为你的串口路径，或从环境变量设置，可以使用 UsbTreeView 或从设备管理中查看当前所有串口
 const comPortString = process.env.COM_PORT_STRING || 'COM3';
 
 // console.log('process.env', process.env);
@@ -24,7 +25,7 @@ const REGISTRY: MavLinkPacketRegistry = {
     ...ardupilotmega.REGISTRY,
 };
 
-// 初始化 SerialPort 实例，替换 path 为你的串口路径，可以使用 UsbTreeView 或从设备管理中查看当前所有串口
+// 初始化 SerialPort 实例
 const port = new SerialPort({path: comPortString, baudRate: 115200});
 
 const m = new CustomProtocolTransformManager(port, new MavLinkProtocolV2(), REGISTRY);
