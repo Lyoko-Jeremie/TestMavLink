@@ -159,8 +159,8 @@ export class MavLinkDecodeStream {
 
 export class CustomProtocolTransformManager {
 
-    // 序列号从0开始
-    private seq = 0;
+    // 序列号从1开始
+    private seq = 1;
     private customProtocolReadStream: PassThrough;
     private customProtocolWriteStream: PassThrough;
 

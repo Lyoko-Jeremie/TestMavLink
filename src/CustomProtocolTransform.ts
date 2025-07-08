@@ -146,6 +146,7 @@ export class CustomProtocolTransformFromSerialPort extends Transform {
         // 备注：id为1-16个天空端的设备ID
         //       playload为天空端设备回传的信息或者地面站发送的cmd，地面站与天空端之间采用mavlink数据传输。先将基本数据打包成mavlink，打包后的mavlink数据放到playload
         //
+        this.debug && console.log('[From SP] Received chunk:', chunk);
 
         // cache data
         const newBuffer = new Uint8Array(this.buffer.length + chunk.length);

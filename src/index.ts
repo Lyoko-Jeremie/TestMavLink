@@ -2,7 +2,7 @@ import {SerialPort} from 'serialport';
 import {
     ardupilotmega,
     common,
-    MavLinkPacketRegistry, MavLinkProtocolV1,
+    MavLinkPacketRegistry,
     MavLinkProtocolV2,
     minimal,
 } from 'node-mavlink';
@@ -28,7 +28,7 @@ const REGISTRY: MavLinkPacketRegistry = {
 // 初始化 SerialPort 实例
 const port = new SerialPort({path: comPortString, baudRate: 921600});
 
-const m = new CustomProtocolTransformManager(port, new MavLinkProtocolV2(), REGISTRY);
+const m = new CustomProtocolTransformManager(port, new MavLinkProtocolV2(1, 1), REGISTRY);
 
 // 接收id 0 的数据
 m.getDecoderStream(0).observableData.subscribe({
@@ -124,13 +124,25 @@ port.on('open', async () => {
 
     console.log('====== CommandLong COMPONENT_ARM_DISARM');
     const cl = new common.CommandLong();
-    cl.targetSystem = 1;
-    cl.targetComponent = 1;
+    cl.targetSystem = 0;
+    cl.targetComponent = 0;
     cl.command = common.MavCmd.COMPONENT_ARM_DISARM;
     cl._param1 = 1;
     console.log(cl);
+
+    // const cl = new common.CommandLong();
+    // cl.targetSystem = 1;
+    // cl.targetComponent = 1;
+    // // cl.command = common.MavCmd.COMPONENT_ARM_DISARM;
+    // // @ts-ignore
+    // cl.command = 1;
+    // cl._param1 = 1;
+    // console.log(cl);
+    // await m.sendMsg(cl, 0);
     await m.sendMsg(cl, 0);
-    await m.sendMsg(cl, 1);
+    // await m.sendMsg(cl, 1);
+    // await m.sendMsg(cl, 1);
+    // await m.sendMsg(cl, 2);
 
     console.log('====== sendEnd');
 });
