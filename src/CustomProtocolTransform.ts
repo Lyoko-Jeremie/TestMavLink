@@ -67,6 +67,7 @@ function detectFistPackFromUint8Array(debug: boolean, buffer: Uint8Array): {
     if (startIndex === -1) {
         // no start of frame found, wait for more data
         console.log('[From SP] No start of frame found, waiting for more data');
+        console.log(buffer);
         return undefined;
     }
     if (startIndex > 0) {

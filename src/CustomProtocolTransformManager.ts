@@ -194,7 +194,7 @@ export class CustomProtocolTransformManager {
             readableObjectMode: true,
             writableObjectMode: true,
         });
-        this.customProtocolWriteStream.pipe(new CustomProtocolTransformToSerialPort(true)).pipe(port);
+        this.customProtocolWriteStream.pipe(new CustomProtocolTransformToSerialPort(false)).pipe(port);
 
     }
 
