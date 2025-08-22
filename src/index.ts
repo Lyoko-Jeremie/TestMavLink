@@ -109,26 +109,29 @@ port.on('open', async () => {
     // await m.sendMsg(commandSystemTime, 1);
     // // await m.sendMsg(commandSystemTime, 3);
 
-    // console.log('====== ComponentArmDisarmCommand');
-    // console.log('common.ComponentArmDisarmCommand.PAYLOAD_LENGTH', common.ComponentArmDisarmCommand.PAYLOAD_LENGTH);
-    // const unlock = new common.ComponentArmDisarmCommand(1, 1);
-    // unlock.arm = 1;
+    console.log('====== ComponentArmDisarmCommand');
+    console.log('common.ComponentArmDisarmCommand.PAYLOAD_LENGTH', common.ComponentArmDisarmCommand.PAYLOAD_LENGTH);
+    const unlock = new common.ComponentArmDisarmCommand(1, 1);
+    unlock.arm = 1;
     // unlock.arm = 0;
-    // unlock.force = 1;
-    // unlock.targetSystem = 1;
-    // unlock.targetComponent = 1;
-    // console.log(unlock)
+    unlock.force = 1;
+    unlock.targetSystem = 1;
+    unlock.targetComponent = 1;
+    // unlock.targetSystem = 0;
+    // unlock.targetComponent = 0;
+    console.log(unlock)
     // await m.sendMsg(unlock, 0);
     // await m.sendMsg(unlock, 1);
     // await m.sendMsg(unlock, 2);
 
-    console.log('====== CommandLong COMPONENT_ARM_DISARM');
-    const cl = new common.CommandLong();
-    cl.targetSystem = 0;
-    cl.targetComponent = 0;
-    cl.command = common.MavCmd.COMPONENT_ARM_DISARM;
-    cl._param1 = 1;
-    console.log(cl);
+    // console.log('====== CommandLong COMPONENT_ARM_DISARM');
+    // const cl = new common.CommandLong();
+    // cl.targetSystem = 0;
+    // cl.targetComponent = 0;
+    // cl.command = common.MavCmd.COMPONENT_ARM_DISARM;
+    // cl._param1 = 0;
+    // // cl._param1 = 1;
+    // console.log(cl);
 
     // const cl = new common.CommandLong();
     // cl.targetSystem = 1;
@@ -139,10 +142,20 @@ port.on('open', async () => {
     // cl._param1 = 1;
     // console.log(cl);
     // await m.sendMsg(cl, 0);
-    await m.sendMsg(cl, 0);
+    // await m.sendMsg(cl, 0);
     // await m.sendMsg(cl, 1);
     // await m.sendMsg(cl, 1);
     // await m.sendMsg(cl, 2);
+    // await m.sendMsg(cl, 2);
+    for (let i = 0; i <= 16; i++) {
+        // await m.sendMsg(cl, i);
+        for (let j = 0; j < 10; j++) {
+            await m.sendMsg(unlock, i);
+            await sleep(1);
+        }
+        // await m.sendMsg(cl, i);
+        await sleep(50);
+    }
 
     console.log('====== sendEnd');
 });
