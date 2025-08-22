@@ -82,6 +82,7 @@ port.on('open', async () => {
     // console.log('====== commandHeartbeat');
     // const commandHeartbeat = new minimal.Heartbeat();
     // commandHeartbeat.systemStatus = minimal.MavState.STANDBY;
+    // console.log(m.debugSerializeMavLinkMsg(commandHeartbeat));
     // // 将心跳包发送到设备ID 0
     // await m.sendMsg(commandHeartbeat, 0);
     // commandHeartbeat.systemStatus = minimal.MavState.BOOT;
@@ -90,7 +91,7 @@ port.on('open', async () => {
     //
     // commandHeartbeat.systemStatus = minimal.MavState.POWEROFF;
     // // 将心跳包发送到设备ID 3
-    // // await m.sendMsg(commandHeartbeat, 3);
+    // await m.sendMsg(commandHeartbeat, 3);
     //
     // // 模拟等待一段时间
     // await sleep(500);
@@ -112,8 +113,8 @@ port.on('open', async () => {
     console.log('====== ComponentArmDisarmCommand');
     console.log('common.ComponentArmDisarmCommand.PAYLOAD_LENGTH', common.ComponentArmDisarmCommand.PAYLOAD_LENGTH);
     const unlock = new common.ComponentArmDisarmCommand(1, 1);
-    unlock.arm = 1;
-    // unlock.arm = 0;
+    // unlock.arm = 1;
+    unlock.arm = 0;
     unlock.force = 1;
     unlock.targetSystem = 1;
     unlock.targetComponent = 1;

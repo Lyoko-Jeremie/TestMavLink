@@ -194,7 +194,7 @@ export class CustomProtocolTransformManager {
             readableObjectMode: true,
             writableObjectMode: true,
         });
-        this.customProtocolWriteStream.pipe(new CustomProtocolTransformToSerialPort(false)).pipe(port);
+        this.customProtocolWriteStream.pipe(new CustomProtocolTransformToSerialPort(true)).pipe(port);
 
     }
 
@@ -241,6 +241,10 @@ export class CustomProtocolTransformManager {
 
     getMavLinkAllPackAndDataObservable() {
         return this.mavLinkAllPackAndDataSubject;
+    }
+
+    public debugSerializeMavLinkMsg(msg: MavLinkData): Buffer {
+        return this.protocol.serialize(msg, this.seq + 1);
     }
 
     /**
