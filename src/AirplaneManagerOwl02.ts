@@ -2,17 +2,35 @@ import {CustomProtocolTransformManager} from "./CustomProtocolTransformManager";
 import {AirplaneManagerOwl02Interface} from "./AirplaneManagerOwl02Interface";
 import {AirplaneOwl02} from "./AirplaneOwl02";
 import {Subscription} from "rxjs";
+import {UtilTimer} from "./utils/UtilTimer";
 
 export class AirplaneManagerOwl02 implements AirplaneManagerOwl02Interface {
     airplane: Map<number, AirplaneOwl02> = new Map<number, AirplaneOwl02>();
     uSubscription?: Subscription;
+    timerHeartbeat: UtilTimer;
 
     constructor(
         public m: CustomProtocolTransformManager,
     ) {
+        this.timerHeartbeat = new UtilTimer(
+            async () => {
+                for (const [id, a] of this.airplane) {
+                    await a.sendHeartbeat();
+                }
+            },
+            console,
+            1000 * 1
+        )
     }
 
-    init() {
+    protected isInit = false;
+
+    public init() {
+        if (this.isInit) {
+            return;
+        }
+        this.isInit = true;
+
         this.uSubscription = this.m.getMavLinkAllPackAndDataObservable().subscribe({
             next: (data) => {
                 // 处理接收到的数据
@@ -25,7 +43,7 @@ export class AirplaneManagerOwl02 implements AirplaneManagerOwl02Interface {
         });
     }
 
-    protected async getAirplane(id: number) {
+    public async getAirplane(id: number) {
         let airplane = this.airplane.get(id);
         if (!airplane) {
             airplane = new AirplaneOwl02(id, this);

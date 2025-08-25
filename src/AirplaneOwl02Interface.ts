@@ -12,6 +12,7 @@ export enum FlyModeEnum {
     FLY_MODE_HOLD = 2,
     FLY_MODE_POSITION = 3,
     FLY_MODE_AUTO = 4,
+    FLY_MODE_OFF_BOARD = 4,
     INVALID = 16,
 }
 // custom_mode的第4个字节代表飞机的细分模式，定义如下

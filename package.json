@@ -10,6 +10,7 @@
     "tsx:ts": "tsx src/index.ts"
   },
   "dependencies": {
+    "@isaacs/ttlcache": "^1.4.1",
     "lru-cache": "^11.1.0",
     "moment": "^2.30.1",
     "node-mavlink": "^2.1.0",

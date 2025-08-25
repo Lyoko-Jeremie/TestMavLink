@@ -9,12 +9,13 @@ import {
 import {AirplaneManagerOwl02Interface} from "./AirplaneManagerOwl02Interface";
 import {common, MavLinkData, MavLinkPacket, minimal, uint8_t} from "node-mavlink";
 import {PackAndDataType} from "./CustomProtocolTransformManager";
+import {TimeBasedFifoCache} from "./utils/TimeBasedFifoCache";
 
-export interface MavLinkPacketRecord {
+export interface MavLinkPacketRecord<D extends MavLinkData = MavLinkData> {
     time: moment.Moment;
     pack: MavLinkPacket;
     msgId: uint8_t;
-    data?: MavLinkData;
+    data?: D;
 }
 
 function ListSwitch<I extends number | string, R>(o: I, s: Record<I, R>, d: R): R {
@@ -26,13 +27,18 @@ function ListSwitch<I extends number | string, R>(o: I, s: Record<I, R>, d: R): 
 }
 
 export class AirplaneOwl02 implements AirplaneOwl02Interface {
-    state: AirplaneOwl02State = new AirplaneOwl02State();
-    cachedPacketRecord: Map<uint8_t, MavLinkPacketRecord> = new Map<uint8_t, MavLinkPacketRecord>();
+    protected state: AirplaneOwl02State = new AirplaneOwl02State();
+    protected cachedPacketRecord: Map<uint8_t, MavLinkPacketRecord> = new Map<uint8_t, MavLinkPacketRecord>();
 
-    parseTable: { [key: number]: (data: PackAndDataType) => void };
-    cachedPacketIds: Set<number>;
+    protected parseTable: { [key: number]: (data: PackAndDataType) => void };
+    protected cachedPacketIds: Set<number>;
 
-    cacheStateText: ;
+    protected cacheStateText: TimeBasedFifoCache<MavLinkPacketRecord<common.StatusText>> = new TimeBasedFifoCache({
+        timeout: 1000 * 60 * 5,
+        maxSize: 30,
+    });
+
+    public commander: AirplaneOwl02Commander;
 
     constructor(
         public targetChannelId: number,
@@ -43,6 +49,7 @@ export class AirplaneOwl02 implements AirplaneOwl02Interface {
             [common.ExtendedSysState.MSG_ID]: this.parseLandState.bind(this),
             [common.AutopilotVersion.MSG_ID]: this.parseAutopilotVersion.bind(this),
             [common.StatusText.MSG_ID]: this.parseStatusText.bind(this),
+            [common.CommandAck.MSG_ID]: this.parseAck.bind(this),
         };
         this.cachedPacketIds = new Set<number>([
             // 飞控解算位置
@@ -56,11 +63,12 @@ export class AirplaneOwl02 implements AirplaneOwl02Interface {
             common.RcChannelsScaled.MSG_ID,
             common.MissionCurrent.MSG_ID,
         ]);
+        this.commander = new AirplaneOwl02Commander(this);
     }
 
-    isInit = false;
+    protected isInit = false;
 
-    async init() {
+    public async init() {
         if (this.isInit) {
             return;
         }
@@ -80,11 +88,11 @@ export class AirplaneOwl02 implements AirplaneOwl02Interface {
         this.cachedPacketRecord.set(msgId, record);
     }
 
-    protected sendMsg(msg: MavLinkData) {
+    public sendMsg(msg: MavLinkData) {
         return this.manager.m.sendMsg(msg, this.targetChannelId);
     }
 
-    async sendHeartbeat() {
+    public async sendHeartbeat() {
         const commandHeartbeat = new minimal.Heartbeat();
         commandHeartbeat.type = minimal.MavType.GCS;
         commandHeartbeat.autopilot = minimal.MavAutopilot.INVALID;
@@ -164,7 +172,12 @@ export class AirplaneOwl02 implements AirplaneOwl02Interface {
 
     protected parseStatusText(data: PackAndDataType) {
         const p = data.data as common.StatusText;
-        p.text;
+        this.cacheStateText.push({
+            time: moment(),
+            pack: data.packet,
+            msgId: data.packet.header.msgid,
+            data: p,
+        });
     }
 
     protected parseAutopilotVersion(data: PackAndDataType) {
@@ -184,6 +197,15 @@ export class AirplaneOwl02 implements AirplaneOwl02Interface {
         this.state.SN = ((p.uid2[0] & 0xFFFFFFFF) >>> 0).toString(16).padStart(8, '0')
             + ((p.uid2[1] & 0xFFFFFFFF) >>> 0).toString(16).padStart(8, '0')
             + ((p.uid2[2] & 0xFFFFFFFF) >>> 0).toString(16).padStart(8, '0');
+    }
+
+    protected parseAck(data: PackAndDataType) {
+        const p = data.data as common.CommandAck;
+        // TODO
+        console.log('[AirplaneOwl02] CommandAck:', p);
+        const cmdId = p.command;
+        const isOk = p.result === 0;
+        const progress = p.progress;
     }
 
     public async parseStateFromMavLink(data: PackAndDataType) {
@@ -215,4 +237,185 @@ export class AirplaneOwl02 implements AirplaneOwl02Interface {
             hdg: p.hdg,
         }
     }
+
+    public getStatusTextList(): { text: string, time: moment.Moment, severity: number }[] {
+        return this.cacheStateText.toArray().map(T => {
+            return {
+                text: T.data?.text ?? '',
+                time: T.time,
+                severity: T.data?.severity ?? 0,
+            };
+        });
+    }
+
+}
+
+export class AirplaneOwl02Commander {
+
+    constructor(
+        public airplane: AirplaneOwl02,
+    ) {
+    }
+
+    lock() {
+        const p = new common.ComponentArmDisarmCommand();
+        p.arm = 0;
+        p.targetSystem = 1;
+        p.targetComponent = 1;
+        return this.airplane.sendMsg(p);
+    }
+
+    unlock() {
+        const p = new common.ComponentArmDisarmCommand();
+        p.arm = 1;
+        p.targetSystem = 1;
+        p.targetComponent = 1;
+        return this.airplane.sendMsg(p);
+    }
+
+    /**
+     * @param height m
+     */
+    takeoff(height: number) {
+        const p = new common.CommandLong();
+        p._param7 = height;
+        p.command = common.MavCmd.NAV_TAKEOFF_LOCAL;
+        p.targetSystem = 1;
+        p.targetComponent = 1;
+        return this.airplane.sendMsg(p);
+    }
+
+    /**
+     * 一键降落
+     * @param landHeight    降落高度(相对起飞点)，单位m
+     * @param yawAngle      飞机航向，单位度
+     */
+    land(landHeight: number, yawAngle: number) {
+        const p = new common.NavLandCommand();
+        p._param4 = yawAngle;
+        p._param5 = 1000;
+        p._param6 = 1000;
+        p._param7 = landHeight;
+        p.command = common.MavCmd.NAV_LAND;
+        p.targetSystem = 1;
+        p.targetComponent = 1;
+        return this.airplane.sendMsg(p);
+    }
+
+    // 一键返航
+    rtl() {
+        const p = new common.NavLandCommand();
+        p.command = common.MavCmd.NAV_RETURN_TO_LAUNCH;
+        p.targetSystem = 1;
+        p.targetComponent = 1;
+        return this.airplane.sendMsg(p);
+    }
+
+    /**
+     * 一键控制载荷
+     * @param pwdChn    PWM通道;    [1，14]
+     * @param pwmRate    PWM占空比;  [0，65000]，50HZ
+     */
+    control_payload(pwdChn: number, pwmRate: number) {
+        const p = new common.NavLandCommand();
+        p.command = common.MavCmd.DO_SET_SERVO;
+        p._param1 = pwdChn;
+        p._param2 = pwmRate;
+        p.targetSystem = 1;
+        p.targetComponent = 1;
+        return this.airplane.sendMsg(p);
+    }
+
+    /**
+     *
+     * @param lat       （纬度，单位°）
+     * @param lon       （经度，单位°）
+     * @param alt       （海拔高度，单位米）
+     * @param yawAngle  （航向角，-360 ~360，填nan则指向航点再飞过去， 填1000则不旋转偏航）
+     * @param speed     （速度，m/s）
+     */
+    gotoGps(lat: number, lon: number, alt: number, yawAngle: number, speed: number) {
+        const p = new common.CommandInt();
+        p._param1 = speed;
+        p._param4 = yawAngle;
+        p._param5 = lat;
+        p._param6 = lon;
+        p._param7 = alt;
+        p.command = common.MavCmd.DO_REPOSITION;
+        p.targetSystem = 1;
+        p.targetComponent = 1;
+        return this.airplane.sendMsg(p);
+    }
+
+    /**
+     * @param mode
+     * @param subMode
+     */
+    setFlyMode(mode: FlyModeEnum, subMode: FlyModeAutoEnum | FlyModeStableEnum) {
+        const p = new common.NavLandCommand();
+        p._param1 = 1;
+        switch (mode) {
+            case FlyModeEnum.FLY_MODE_HOLD:
+                p._param2 = 2;
+                break;
+            case FlyModeEnum.FLY_MODE_POSITION:
+                p._param2 = 3;
+                switch (subMode) {
+                    case FlyModeStableEnum.FLY_MODE_STABLE_NORMAL:
+                        p._param3 = 0;
+                        break;
+                    case FlyModeStableEnum.FLY_MODE_STABLE_OBSTACLE_AVOIDANCE:
+                        p._param3 = 2;
+                        break;
+                    case FlyModeStableEnum.INVALID:
+                    default:
+                        console.warn('[AirplaneOwl02Commander] setFlyMode invalid subMode for position mode', subMode);
+                        return Promise.reject(new Error('[AirplaneOwl02Commander] setFlyMode invalid subMode for position mode ' + subMode));
+                }
+                break;
+            case FlyModeEnum.FLY_MODE_AUTO:
+                p._param2 = 4;
+                switch (subMode) {
+                    case FlyModeAutoEnum.FLY_MODE_AUTO_FOLLOW:
+                        p._param3 = 3;
+                        break;
+                    case FlyModeAutoEnum.FLY_MODE_AUTO_MISSION:
+                        p._param3 = 4;
+                        break;
+                    case FlyModeAutoEnum.FLY_MODE_AUTO_RTL:
+                        p._param3 = 5;
+                        break;
+                    case FlyModeAutoEnum.FLY_MODE_AUTO_LAND:
+                        p._param3 = 6;
+                        break;
+                    case FlyModeAutoEnum.FLY_MODE_AUTO_TAKEOFF:
+                    // (不可设置，只反馈)
+                    // p._param3 = 2;
+                    // break;
+                    case FlyModeAutoEnum.INVALID:
+                    default:
+                        console.warn('[AirplaneOwl02Commander] setFlyMode invalid subMode for auto mode', subMode);
+                        return Promise.reject(new Error('[AirplaneOwl02Commander] setFlyMode invalid subMode for auto mode ' + subMode));
+                }
+                break;
+            case FlyModeEnum.FLY_MODE_OFF_BOARD:
+            case FlyModeEnum.INVALID:
+            default:
+                console.warn('[AirplaneOwl02Commander] setFlyMode invalid mode', mode);
+                return Promise.reject(new Error('[AirplaneOwl02Commander] setFlyMode invalid mode ' + mode));
+        }
+        p.command = common.MavCmd.DO_SET_MODE;
+        p.targetSystem = 1;
+        p.targetComponent = 1;
+    }
+
+    set_home_position(lat: number, lon: number, alt: number) {
+        const p = new common.SetHomePosition();
+        p.latitude = lat;
+        p.longitude = lon;
+        p.altitude = alt;
+        p.targetSystem = 1;
+        return this.airplane.sendMsg(p);
+    }
+
 }
