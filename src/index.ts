@@ -5,9 +5,11 @@ import {
     MavLinkPacketRegistry,
     MavLinkProtocolV2,
     minimal,
+    registerCustomMessageMagicNumber,
 } from 'node-mavlink';
 import {CustomProtocolTransformManager} from "./CustomProtocolTransformManager";
 import {MavStateCollector} from "./MavStateCollector";
+import {UtilTimer} from "./utils/UtilTimer";
 
 // 替换 COM3 为你的串口路径，或从环境变量设置，可以使用 UsbTreeView 或从设备管理中查看当前所有串口
 const comPortString = process.env.COM_PORT_STRING || 'COM10';
@@ -74,9 +76,40 @@ async function sleep(ms: number): Promise<void> {
     return new Promise(resolve => setTimeout(resolve, ms));
 }
 
+const heartbeatTimer = new UtilTimer(
+    async () => {
+        const commandHeartbeat = new minimal.Heartbeat();
+        commandHeartbeat.type = minimal.MavType.GCS;
+        commandHeartbeat.autopilot = minimal.MavAutopilot.INVALID;
+        // (base_mode&0x80) ==0x80 飞机已解锁，
+        // (base_mode&0x80) !=0x80 飞机未解锁.
+        commandHeartbeat.baseMode = minimal.MavModeFlag.CUSTOM_MODE_ENABLED;
+        // custom_mode的第3个字节代表飞机的主模式，定义如下
+        // 定高模式（2）
+        // 定点模式（3）
+        // 自动模式（4）
+        // custom_mode的第4个字节代表飞机的细分模式，定义如下
+        // 自动模式细分：
+        // 	自动起飞模式（2）
+        // 	自动跟踪模式（3）
+        // 	自动任务模式（4）
+        // 	自动返航模式（5）
+        // 	自动降落模式（6）
+        // 定点模式细分：
+        // 	普通定点模式（0）
+        // 	定点避障模式（2）
+        // commandHeartbeat.customMode = ;
+        commandHeartbeat.systemStatus = minimal.MavState.ACTIVE;
+    },
+    console,
+    1000,
+);
+
 port.on('open', async () => {
     // the port is open - we're ready to send data
     // 串口已打开 - 准备发送数据
+
+    heartbeatTimer.start();
 
     // 构造一个心跳包，填充数据并发送
     // console.log('====== commandHeartbeat');

@@ -1,16 +1,16 @@
 import moment from 'moment';
-import {MavLinkData, MavLinkPacket, uint8_t} from "node-mavlink";
+import {MavLinkData, MavLinkPacket} from "node-mavlink";
 import {CustomProtocolTransformManager, PackAndDataType} from "./CustomProtocolTransformManager";
 
 export interface MavLinkPacketRecord {
     time: moment.Moment;
     pack: MavLinkPacket;
-    msgId: uint8_t;
+    msgId: number;
     data?: MavLinkData;
 }
 
 export class MavStateItem {
-    cachedPacketRecord: Map<uint8_t, MavLinkPacketRecord> = new Map<uint8_t, MavLinkPacketRecord>();
+    cachedPacketRecord: Map<number, MavLinkPacketRecord> = new Map<number, MavLinkPacketRecord>();
 
     // TODO collect state info from Record
 
@@ -28,7 +28,6 @@ export class MavStateItem {
             data: data,
         } satisfies MavLinkPacketRecord;
         this.cachedPacketRecord.set(msgId, record);
-
     }
 
     getStateInfo() {
