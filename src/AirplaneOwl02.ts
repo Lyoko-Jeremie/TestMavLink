@@ -50,6 +50,7 @@ export class AirplaneOwl02 implements AirplaneOwl02Interface {
             [common.AutopilotVersion.MSG_ID]: this.parseAutopilotVersion.bind(this),
             [common.StatusText.MSG_ID]: this.parseStatusText.bind(this),
             [common.CommandAck.MSG_ID]: this.parseAck.bind(this),
+            [common.GlobalPositionInt.MSG_ID]: this.parseGpsPos.bind(this),
         };
         this.cachedPacketIds = new Set<number>([
             // 飞控解算位置
@@ -206,6 +207,15 @@ export class AirplaneOwl02 implements AirplaneOwl02Interface {
         const cmdId = p.command;
         const isOk = p.result === 0;
         const progress = p.progress;
+    }
+
+    protected parseGpsPos(data: PackAndDataType) {
+        const p = data.data as common.GlobalPositionInt;
+        this.state.gpsPosition.lat = p.lat / 1e7;
+        this.state.gpsPosition.lon = p.lon / 1e7;
+        this.state.gpsPosition.alt = p.alt / 1e4;
+        this.state.gpsPosition.relativeAlt = p.relativeAlt / 1e4;
+        this.state.gpsPosition.hdg = p.hdg;
     }
 
     public async parseStateFromMavLink(data: PackAndDataType) {

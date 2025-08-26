@@ -1,4 +1,4 @@
-import {MavLandedState} from "./Owl02/commonACFly";
+import {common} from "node-mavlink";
 
 export interface AirplaneOwl02Interface {
     targetChannelId: number;
@@ -15,6 +15,7 @@ export enum FlyModeEnum {
     FLY_MODE_OFF_BOARD = 4,
     INVALID = 16,
 }
+
 // custom_mode的第4个字节代表飞机的细分模式，定义如下
 // 自动模式细分：
 // 	自动起飞模式（2）
@@ -33,6 +34,7 @@ export enum FlyModeAutoEnum {
     FLY_MODE_AUTO_LAND = 6,
     INVALID = 16,
 }
+
 export enum FlyModeStableEnum {
     FLY_MODE_STABLE_NORMAL = 0,
     FLY_MODE_STABLE_OBSTACLE_AVOIDANCE = 2,
@@ -45,9 +47,23 @@ export class AirplaneOwl02State {
     flyModeAuto: FlyModeAutoEnum = FlyModeAutoEnum.INVALID;
     flyModeStable: FlyModeStableEnum = FlyModeStableEnum.INVALID;
 
-    isLanded: MavLandedState = MavLandedState.UNDEFINED;
+    isLanded: common.MavLandedState = common.MavLandedState.UNDEFINED;
     flightSwVersion?: number;
     flightSwVersionString?: string;
     boardVersion?: number;
     SN?: string;
+
+    gpsPosition: {
+        lat: number,
+        lon: number,
+        alt: number,
+        relativeAlt: number,
+        hdg: number,
+    } = {
+        lat: 0,
+        lon: 0,
+        alt: 0,
+        relativeAlt: 0,
+        hdg: 0,
+    };
 }
