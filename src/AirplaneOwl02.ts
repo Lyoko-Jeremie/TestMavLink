@@ -10,7 +10,7 @@ import {AirplaneManagerOwl02Interface} from "./AirplaneManagerOwl02Interface";
 import {common, MavLinkData, MavLinkPacket, minimal, uint8_t} from "node-mavlink";
 import {PackAndDataType} from "./CustomProtocolTransformManager";
 import {TimeBasedFifoCache} from "./utils/TimeBasedFifoCache";
-import {BehaviorSubject, firstValueFrom, Subject} from "rxjs";
+import {BehaviorSubject, filter, firstValueFrom, Subject} from "rxjs";
 import {timeoutWithoutError} from "./utils/rxjsTimeoutWithoutError";
 import * as commonACFly from './Owl02Lib/commonACFly';
 
@@ -105,10 +105,10 @@ export class AirplaneOwl02 implements AirplaneOwl02Interface {
     public async sendHeartbeat() {
         const commandHeartbeat = new minimal.Heartbeat();
         commandHeartbeat.type = minimal.MavType.GCS;
-        commandHeartbeat.autopilot = minimal.MavAutopilot.INVALID;
+        // commandHeartbeat.autopilot = minimal.MavAutopilot.INVALID;
         // (base_mode&0x80) ==0x80 飞机已解锁，
         // (base_mode&0x80) !=0x80 飞机未解锁.
-        commandHeartbeat.baseMode = minimal.MavModeFlag.CUSTOM_MODE_ENABLED;
+        // commandHeartbeat.baseMode = minimal.MavModeFlag.CUSTOM_MODE_ENABLED;
         // custom_mode的第3个字节代表飞机的主模式，定义如下
         // 定高模式（2）
         // 定点模式（3）
@@ -123,7 +123,7 @@ export class AirplaneOwl02 implements AirplaneOwl02Interface {
         // 定点模式细分：
         // 	普通定点模式（0）
         // 	定点避障模式（2）
-        commandHeartbeat.customMode = 0;
+        // commandHeartbeat.customMode = 0;
         commandHeartbeat.systemStatus = minimal.MavState.ACTIVE;
         await this.sendMsg(commandHeartbeat);
     }
@@ -322,7 +322,11 @@ export class AirplaneOwl02 implements AirplaneOwl02Interface {
     }
 
     public waitAckOnce(timeoutMs: number, command: common.MavCmd) {
-        return firstValueFrom(this.ackPackStream.pipe(timeoutWithoutError(timeoutMs, undefined)));
+        return firstValueFrom(this.ackPackStream.pipe(
+            filter(T => !!T),
+            filter(P => P.data.command === command),
+            timeoutWithoutError(timeoutMs, undefined),
+        ));
     }
 
 }
