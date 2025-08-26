@@ -56,6 +56,7 @@ export class AirplaneOwl02 implements AirplaneOwl02Interface {
             [common.StatusText.MSG_ID]: this.parseStatusText.bind(this),
             [common.CommandAck.MSG_ID]: this.parseAck.bind(this),
             [common.GlobalPositionInt.MSG_ID]: this.parseGpsPos.bind(this),
+            [commonACFly.BatteryStatusAcfly.MSG_ID]: this.parseBatteryStatusAcfly.bind(this),
         };
         this.cachedPacketIds = new Set<number>([
             // 飞控解算位置
@@ -68,6 +69,8 @@ export class AirplaneOwl02 implements AirplaneOwl02Interface {
             common.RcChannels.MSG_ID,
             common.RcChannelsScaled.MSG_ID,
             common.MissionCurrent.MSG_ID,
+            common.BatteryStatus.MSG_ID,
+            commonACFly.BatteryStatusAcfly.MSG_ID,
         ]);
         this.commander = new AirplaneOwl02Commander(this);
     }
@@ -223,6 +226,43 @@ export class AirplaneOwl02 implements AirplaneOwl02Interface {
         this.state.gpsPosition.alt = p.alt / 1e4;
         this.state.gpsPosition.relativeAlt = p.relativeAlt / 1e4;
         this.state.gpsPosition.hdg = p.hdg;
+    }
+
+    protected parseBatteryStatusAcfly(data: PackAndDataType) {
+        const p = data.data as commonACFly.BatteryStatusAcfly;
+        // 电池电压，单位100mv
+        // 无效值: 0xFFFFFFFF
+        p.voltage;
+        // 电池容量，单位mAh
+        // 无效值: 0xFFFFFFFF
+        p.capacity;
+        // 电池序列号
+        // 无效值: 0xFFFFFFFF
+        p.sequenceNum;
+        // 错误标记位
+        // 无效值0xFF
+        p.faultBitmask;
+        // 温度，单位度
+        // 无效值0x7FFF
+        p.temperature;
+        // 循环次数
+        // 无效值0xFFFF
+        p.cycleCount;
+        // 电量，单位100mA
+        p.current;
+        // 电池id
+        // 根据此字段区分多个电池
+        p.id;
+        // 健康度，[0 - 100]
+        p.health;
+        // 剩余百分比 [0 - 100]
+        p.remainingPercentage;
+        // 电池节数，无效值0xFF
+        // 注:航模电池一般由多节电池组成
+        p.cellCount;
+        // 单节电池电压，一般满电为4.2V；单位0.02mV，无效值0x00
+        // 例voltages[0]=210，那么第一节电池电压为210*0.02=4.2V
+        p.voltages;
     }
 
     public async parseStateFromMavLink(data: PackAndDataType) {

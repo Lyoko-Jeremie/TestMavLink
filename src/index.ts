@@ -10,6 +10,8 @@ import {
 import {CustomProtocolTransformManager} from "./CustomProtocolTransformManager";
 import {MavStateCollector} from "./MavStateCollector";
 import {UtilTimer} from "./utils/UtilTimer";
+import {MSG_ID_MAGIC_NUMBER} from "./Owl02Lib/magic-numbers";
+import * as commonACFly from "./Owl02Lib/commonACFly";
 
 // 替换 COM3 为你的串口路径，或从环境变量设置，可以使用 UsbTreeView 或从设备管理中查看当前所有串口
 const comPortString = process.env.COM_PORT_STRING || 'COM10';
@@ -25,7 +27,12 @@ const REGISTRY: MavLinkPacketRegistry = {
     ...minimal.REGISTRY,
     ...common.REGISTRY,
     ...ardupilotmega.REGISTRY,
+    ...{
+        602: commonACFly.BatteryStatusAcfly,
+    }
 };
+
+registerCustomMessageMagicNumber('602', MSG_ID_MAGIC_NUMBER['602']);    // BatteryStatusAcfly
 
 // 初始化 SerialPort 实例
 const port = new SerialPort({path: comPortString, baudRate: 921600});
