@@ -12,6 +12,7 @@ import {PackAndDataType} from "./CustomProtocolTransformManager";
 import {TimeBasedFifoCache} from "./utils/TimeBasedFifoCache";
 import {BehaviorSubject, firstValueFrom, Subject} from "rxjs";
 import {timeoutWithoutError} from "./utils/rxjsTimeoutWithoutError";
+import * as commonACFly from './Owl02Lib/commonACFly';
 
 export interface MavLinkPacketRecord<D extends MavLinkData = MavLinkData> {
     time: moment.Moment;
@@ -363,7 +364,7 @@ export class AirplaneOwl02Commander {
     }
 
     /**
-     *
+     * gps定点飞行
      * @param lat       （纬度，单位°）
      * @param lon       （经度，单位°）
      * @param alt       （海拔高度，单位米）
@@ -373,10 +374,33 @@ export class AirplaneOwl02Commander {
     gotoGps(lat: number, lon: number, alt: number, yawAngle: number, speed: number) {
         const p = new common.CommandInt();
         p._param1 = speed;
+        p._param2 = common.MavDoRepositionFlags.CHANGE_MODE;
         p._param4 = yawAngle;
         p._param5 = lat;
         p._param6 = lon;
         p._param7 = alt;
+        p.command = common.MavCmd.DO_REPOSITION;
+        p.targetSystem = 1;
+        p.targetComponent = 1;
+        return this.airplane.sendMsg(p);
+    }
+
+    /**
+     * 室内定点飞行
+     * @param x       （x，cm）
+     * @param y       （y，cm）
+     * @param h       （高度，cm）
+     * @param yawAngle  （航向角，-360 ~360，填nan则指向航点再飞过去， 填1000则不旋转偏航）
+     * @param speed     （速度，m/s）
+     */
+    gotoLocal(x: number, y: number, h: number, yawAngle: number, speed: number) {
+        const p = new common.CommandLong();
+        p._param1 = speed;
+        p._param2 = commonACFly.MavFrame.BODY_FLU;
+        p._param4 = yawAngle;
+        p._param5 = x;
+        p._param6 = y;
+        p._param7 = h;
         p.command = common.MavCmd.DO_REPOSITION;
         p.targetSystem = 1;
         p.targetComponent = 1;
