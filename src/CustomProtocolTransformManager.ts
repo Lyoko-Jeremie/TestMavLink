@@ -30,9 +30,9 @@ export class MavLinkPacket2DataTransform extends Transform {
     }
 }
 
-export interface PackAndDataType {
+export interface PackAndDataType<Data extends MavLinkData = MavLinkData> {
     packet: MavLinkPacket;
-    data: MavLinkData;
+    data: Data;
 }
 
 export class MavLinkPacket2Data {
@@ -253,13 +253,14 @@ export class CustomProtocolTransformManager {
      * @param targetId - 目标设备 ID，0xFF 表示广播
      * @returns 是否发送成功
      */
-    public async sendMsg(msg: MavLinkData, targetId: number): Promise<boolean> {
+    public async sendMsg(msg: MavLinkData, targetId: number): Promise<number | undefined> {
         if ((targetId & 0xFF) !== targetId) {
             console.error('[CPT] sendMsg invalid targetId :', targetId);
-            return false;
+            return undefined;
         }
 
-        const packBuf = this.protocol.serialize(msg, this.seq++);
+        const seq = this.seq++;
+        const packBuf = this.protocol.serialize(msg, seq);
 
         return new Promise((resolve, reject) => {
             // writeStreamWithWait(this.customProtocolWriteStream,
@@ -286,6 +287,9 @@ export class CustomProtocolTransformManager {
                         resolve(true);
                     }
                 });
+        }).then(() => seq).catch(e => {
+            console.error('[CPT] sendMsg error :', e);
+            return undefined;
         });
     }
 

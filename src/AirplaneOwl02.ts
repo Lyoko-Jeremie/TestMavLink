@@ -10,6 +10,8 @@ import {AirplaneManagerOwl02Interface} from "./AirplaneManagerOwl02Interface";
 import {common, MavLinkData, MavLinkPacket, minimal, uint8_t} from "node-mavlink";
 import {PackAndDataType} from "./CustomProtocolTransformManager";
 import {TimeBasedFifoCache} from "./utils/TimeBasedFifoCache";
+import {BehaviorSubject, firstValueFrom, Subject} from "rxjs";
+import {timeoutWithoutError} from "./utils/rxjsTimeoutWithoutError";
 
 export interface MavLinkPacketRecord<D extends MavLinkData = MavLinkData> {
     time: moment.Moment;
@@ -39,6 +41,8 @@ export class AirplaneOwl02 implements AirplaneOwl02Interface {
     });
 
     public commander: AirplaneOwl02Commander;
+    protected packStream = new Subject<MavLinkPacketRecord>();
+    protected ackPackStream = new BehaviorSubject<PackAndDataType<common.CommandAck> | undefined>(undefined);
 
     constructor(
         public targetChannelId: number,
@@ -87,6 +91,7 @@ export class AirplaneOwl02 implements AirplaneOwl02Interface {
             data: data,
         } satisfies MavLinkPacketRecord;
         this.cachedPacketRecord.set(msgId, record);
+        this.packStream.next(record);
     }
 
     public sendMsg(msg: MavLinkData) {
@@ -126,7 +131,7 @@ export class AirplaneOwl02 implements AirplaneOwl02Interface {
         const p = new common.RequestAutopilotCapabilitiesCommand();
         p.targetComponent = 1;
         p.targetComponent = 1;
-        await this.sendMsg(p);
+        return await this.sendMsg(p);
     }
 
     protected parseHeartbeat(data: PackAndDataType) {
@@ -201,6 +206,7 @@ export class AirplaneOwl02 implements AirplaneOwl02Interface {
     }
 
     protected parseAck(data: PackAndDataType) {
+        this.ackPackStream.next(data as PackAndDataType<common.CommandAck>);
         const p = data.data as common.CommandAck;
         // TODO
         console.log('[AirplaneOwl02] CommandAck:', p);
@@ -248,6 +254,22 @@ export class AirplaneOwl02 implements AirplaneOwl02Interface {
         }
     }
 
+    public getAttitude() {
+        const p = this.cachedPacketRecord.get(common.Attitude.MSG_ID) as undefined | common.Attitude;
+        if (!p) {
+            return undefined;
+        }
+        return {
+            roll: p.roll,
+            pitch: p.pitch,
+            yaw: p.yaw,
+            rollSpeed: p.rollspeed,
+            pitchSpeed: p.pitchspeed,
+            yawSpeed: p.yawspeed,
+            timeBootMs: p.timeBootMs,
+        };
+    }
+
     public getStatusTextList(): { text: string, time: moment.Moment, severity: number }[] {
         return this.cacheStateText.toArray().map(T => {
             return {
@@ -256,6 +278,10 @@ export class AirplaneOwl02 implements AirplaneOwl02Interface {
                 severity: T.data?.severity ?? 0,
             };
         });
+    }
+
+    public waitAckOnce(timeoutMs: number, command: common.MavCmd) {
+        return firstValueFrom(this.ackPackStream.pipe(timeoutWithoutError(timeoutMs, undefined)));
     }
 
 }
@@ -417,6 +443,7 @@ export class AirplaneOwl02Commander {
         p.command = common.MavCmd.DO_SET_MODE;
         p.targetSystem = 1;
         p.targetComponent = 1;
+        return this.airplane.sendMsg(p);
     }
 
     set_home_position(lat: number, lon: number, alt: number) {
