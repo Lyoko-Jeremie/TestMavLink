@@ -116,25 +116,25 @@ port.on('open', async () => {
     // the port is open - we're ready to send data
     // 串口已打开 - 准备发送数据
 
-    heartbeatTimer.start();
+    // heartbeatTimer.start();
 
     // 构造一个心跳包，填充数据并发送
-    // console.log('====== commandHeartbeat');
-    // const commandHeartbeat = new minimal.Heartbeat();
-    // commandHeartbeat.systemStatus = minimal.MavState.STANDBY;
+    console.log('====== commandHeartbeat');
+    const commandHeartbeat = new minimal.Heartbeat();
+    commandHeartbeat.systemStatus = minimal.MavState.STANDBY;
     // console.log(m.debugSerializeMavLinkMsg(commandHeartbeat));
-    // // 将心跳包发送到设备ID 0
-    // await m.sendMsg(commandHeartbeat, 0);
+    // 将心跳包发送到设备ID 0
+    await m.sendMsg(commandHeartbeat, 0);
     // commandHeartbeat.systemStatus = minimal.MavState.BOOT;
-    // // 将心跳包发送到设备ID 1
-    // await m.sendMsg(commandHeartbeat, 1);
+    // 将心跳包发送到设备ID 1
+    await m.sendMsg(commandHeartbeat, 1);
     //
     // commandHeartbeat.systemStatus = minimal.MavState.POWEROFF;
-    // // 将心跳包发送到设备ID 3
-    // await m.sendMsg(commandHeartbeat, 3);
+    // 将心跳包发送到设备ID 3
+    await m.sendMsg(commandHeartbeat, 3);
     //
-    // // 模拟等待一段时间
-    // await sleep(500);
+    // 模拟等待一段时间
+    await sleep(500);
     //
     // // 构造一个系统时间包，填充数据并发送
     // console.log('====== commandSystemTime');
@@ -151,11 +151,11 @@ port.on('open', async () => {
     // // await m.sendMsg(commandSystemTime, 3);
 
     console.log('====== ComponentArmDisarmCommand');
-    console.log('common.ComponentArmDisarmCommand.PAYLOAD_LENGTH', common.ComponentArmDisarmCommand.PAYLOAD_LENGTH);
+    // console.log('common.ComponentArmDisarmCommand.PAYLOAD_LENGTH', common.ComponentArmDisarmCommand.PAYLOAD_LENGTH);
     const unlock = new common.ComponentArmDisarmCommand(1, 1);
     // unlock.arm = 1;
     unlock.arm = 0;
-    unlock.force = 1;
+    // unlock.force = 1;
     unlock.targetSystem = 1;
     unlock.targetComponent = 1;
     // unlock.targetSystem = 0;
@@ -190,7 +190,7 @@ port.on('open', async () => {
     // await m.sendMsg(cl, 2);
     for (let i = 0; i <= 16; i++) {
         // await m.sendMsg(cl, i);
-        for (let j = 0; j < 10; j++) {
+        for (let j = 0; j < 1; j++) {
             await m.sendMsg(unlock, i);
             await sleep(1);
         }
