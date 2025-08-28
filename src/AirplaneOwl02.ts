@@ -104,7 +104,7 @@ export class AirplaneOwl02 implements AirplaneOwl02Interface {
 
     public async sendHeartbeat() {
         const commandHeartbeat = new minimal.Heartbeat();
-        commandHeartbeat.type = minimal.MavType.GCS;
+        // commandHeartbeat.type = minimal.MavType.GCS;
         // commandHeartbeat.autopilot = minimal.MavAutopilot.INVALID;
         // (base_mode&0x80) ==0x80 飞机已解锁，
         // (base_mode&0x80) !=0x80 飞机未解锁.
@@ -124,7 +124,7 @@ export class AirplaneOwl02 implements AirplaneOwl02Interface {
         // 	普通定点模式（0）
         // 	定点避障模式（2）
         // commandHeartbeat.customMode = 0;
-        commandHeartbeat.systemStatus = minimal.MavState.ACTIVE;
+        // commandHeartbeat.systemStatus = minimal.MavState.ACTIVE;
         await this.sendMsg(commandHeartbeat);
     }
 

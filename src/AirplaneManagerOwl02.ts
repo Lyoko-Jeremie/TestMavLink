@@ -19,7 +19,7 @@ export class AirplaneManagerOwl02 implements AirplaneManagerOwl02Interface {
                 }
             },
             console,
-            1000 * 1
+            1000 * 2
         )
     }
 
