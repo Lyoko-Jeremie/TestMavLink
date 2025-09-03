@@ -323,7 +323,7 @@ export class AirplaneOwl02 implements AirplaneOwl02Interface {
 
     public waitAckOnce(timeoutMs: number, command: common.MavCmd) {
         return firstValueFrom(this.ackPackStream.pipe(
-            filter(T => !!T),
+            filter((T): T is PackAndDataType<common.CommandAck> => !!T),
             filter(P => P.data.command === command),
             timeoutWithoutError(timeoutMs, undefined),
         ));
