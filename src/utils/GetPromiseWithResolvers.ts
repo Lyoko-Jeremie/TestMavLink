@@ -35,7 +35,7 @@ class Defer<T> implements PromiseWithResolvers<T> {
 
 export function GetPromiseWithResolvers<T>(): PromiseWithResolvers<T> {
     if ('withResolvers' in Promise) {
-        return (Promise['withResolvers'] as withResolversCaller)<T>() as PromiseWithResolvers<T>;
+        return ((Promise as any)['withResolvers'] as withResolversCaller)<T>() as PromiseWithResolvers<T>;
     }
     return new Defer<T>();
 }

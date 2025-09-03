@@ -329,6 +329,13 @@ export class AirplaneOwl02 implements AirplaneOwl02Interface {
         ));
     }
 
+    public destroy() {
+        this.packStream.complete();
+        this.ackPackStream.complete();
+        this.cacheStateText.clear();
+        this.cachedPacketRecord.clear();
+    }
+
 }
 
 export class AirplaneOwl02Commander {

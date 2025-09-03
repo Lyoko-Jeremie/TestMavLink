@@ -5,9 +5,9 @@ import {Subscription} from "rxjs";
 import {UtilTimer} from "./utils/UtilTimer";
 
 export class AirplaneManagerOwl02 implements AirplaneManagerOwl02Interface {
-    airplane: Map<number, AirplaneOwl02> = new Map<number, AirplaneOwl02>();
-    uSubscription?: Subscription;
-    timerHeartbeat: UtilTimer;
+    protected airplane: Map<number, AirplaneOwl02> = new Map<number, AirplaneOwl02>();
+    protected uSubscription?: Subscription;
+    protected timerHeartbeat: UtilTimer;
 
     constructor(
         public m: CustomProtocolTransformManager,
@@ -51,5 +51,22 @@ export class AirplaneManagerOwl02 implements AirplaneManagerOwl02Interface {
             this.airplane.set(id, airplane);
         }
         return airplane;
+    }
+
+    public destroy() {
+        try {
+            this.uSubscription?.unsubscribe();
+        } catch (e) {
+            console.error(e);
+            // simple ignore it
+        }
+        try {
+            this.timerHeartbeat.stop();
+        } catch (e) {
+            console.error(e);
+            // simple ignore it
+        }
+        this.airplane.forEach(a => a.destroy());
+        this.airplane.clear();
     }
 }
