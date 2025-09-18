@@ -1,4 +1,5 @@
 // @ts-nocheck
+import {MavLinkData, MavLinkPacketField} from 'node-mavlink';
 
 /**
  * These values define the type of firmware release. These values indicate the first version or release
@@ -378,7 +379,7 @@ export enum MavSysStatusSensorExtended {
 /**
  * Co-ordinate frames used by MAVLink. Not all frames are supported by all commands, messages, or
  * vehicles.
- 
+
  Global frames use the following naming conventions:
  - "GLOBAL": Global co-ordinate
  * frame with WGS84 latitude/longitude and altitude positive over mean sea level (MSL) by default.
@@ -388,7 +389,7 @@ export enum MavSysStatusSensorExtended {
  - "TERRAIN_ALT": Altitude is relative to ground level rather
  * than MSL.
  - "INT": Latitude/longitude (in degrees) are scaled by multiplying by 1E7.
- 
+
  Local
  * frames use the following naming conventions:
  - "LOCAL": Origin of local frame is fixed relative to
@@ -398,7 +399,7 @@ export enum MavSysStatusSensorExtended {
  * alignment of frame axis with vehicle attitude.
  - "OFFSET": Deprecated synonym for "BODY" (origin
  * travels with the vehicle). Not to be used for new frames.
- 
+
  Some deprecated frames do not follow
  * these conventions (e.g. MAV_FRAME_BODY_NED and MAV_FRAME_BODY_OFFSET_NED).
  */
@@ -1616,7 +1617,7 @@ export enum AutotuneAxis {
 export enum MavCmd {
   /**
    * request vehicle to send WGA code.
-   * @param1 ind (uint32_t)0-9:WGA index  10-79:Clear  
+   * @param1 ind (uint32_t)0-9:WGA index  10-79:Clear
    * @param2 Empty
    * @param3 Empty
    * @param4 Empty
@@ -20992,7 +20993,7 @@ export class CameraCaptureStatus extends MavLinkData {
  set to 0 (default)
  * to send just the the message for the sequence number in param 2,
  set to -1 to send the message for
- * the sequence number in param 2 and all the following sequence numbers, 
+ * the sequence number in param 2 and all the following sequence numbers,
  set to the sequence number
  * of the final message in the range.
  */
