@@ -175,7 +175,7 @@ export class CustomProtocolTransformManager {
 
     private mavLinkDecodeStreamTable: Map<number, MavLinkDecodeStream> = new Map<number, MavLinkDecodeStream>();
 
-    mavLinkAllDataSubject: Subject<{ id: number, data: MavLinkData }> = new Subject();
+    mavLinkAllDataSubject: Subject<{ id: number, data: MavLinkPacket2DataProcessType }> = new Subject();
     mavLinkAllPackAndDataSubject: Subject<{ id: number, packAndData: PackAndDataType }> = new Subject();
 
     constructor(
