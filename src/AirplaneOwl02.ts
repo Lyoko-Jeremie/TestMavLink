@@ -8,7 +8,7 @@ import {
 } from "./AirplaneOwl02Interface";
 import {AirplaneManagerOwl02Interface} from "./AirplaneManagerOwl02Interface";
 import {common, MavLinkData, MavLinkPacket, minimal, uint8_t} from "node-mavlink";
-import {PackAndDataType} from "./CustomProtocolTransformManager";
+import {MavLinkPacket2DataProcessType, PackAndDataType} from "./CustomProtocolTransformManager";
 import {TimeBasedFifoCache} from "./utils/TimeBasedFifoCache";
 import {BehaviorSubject, filter, firstValueFrom, Subject} from "rxjs";
 import {timeoutWithoutError} from "./utils/rxjsTimeoutWithoutError";
@@ -18,7 +18,7 @@ export interface MavLinkPacketRecord<D extends MavLinkData = MavLinkData> {
     time: moment.Moment;
     pack: MavLinkPacket;
     msgId: uint8_t;
-    data?: D;
+    data?: MavLinkPacket2DataProcessType<D>;
 }
 
 function ListSwitch<I extends number | string, R>(o: I, s: Record<I, R>, d: R): R {
@@ -86,14 +86,14 @@ export class AirplaneOwl02 implements AirplaneOwl02Interface {
         await this.sendHeartbeat();
     }
 
-    protected cachePacketRecord(pack: MavLinkPacket, data?: MavLinkData): void {
+    protected cachePacketRecord(pack: MavLinkPacket, data?: MavLinkPacket2DataProcessType): void {
         const msgId = pack.header.msgid;
         const record: MavLinkPacketRecord = {
             time: moment(),
             pack: pack,
             msgId: msgId,
             data: data,
-        } satisfies MavLinkPacketRecord;
+        };
         this.cachedPacketRecord.set(msgId, record);
         this.packStream.next(record);
     }
@@ -139,7 +139,7 @@ export class AirplaneOwl02 implements AirplaneOwl02Interface {
     }
 
     protected parseHeartbeat(data: PackAndDataType) {
-        const p = data.data as minimal.Heartbeat;
+        const p = data.data.mavLinkData as minimal.Heartbeat;
         this.state.isArmed = (p.baseMode & 0x80) === 0x80;
         // this.state.flyMode = ListSwitch((p.customMode >>> (8 * 3)) & 0xFF, {
         //     2: FlyModeEnum.FLY_MODE_HOLD,
@@ -176,12 +176,12 @@ export class AirplaneOwl02 implements AirplaneOwl02Interface {
     }
 
     protected parseLandState(data: PackAndDataType) {
-        const p = data.data as common.ExtendedSysState;
+        const p = data.data.mavLinkData as common.ExtendedSysState;
         this.state.isLanded = p.landedState;
     }
 
     protected parseStatusText(data: PackAndDataType) {
-        const p = data.data as common.StatusText;
+        const p = data.data as MavLinkPacket2DataProcessType<common.StatusText> ;
         this.cacheStateText.push({
             time: moment(),
             pack: data.packet,
@@ -191,7 +191,7 @@ export class AirplaneOwl02 implements AirplaneOwl02Interface {
     }
 
     protected parseAutopilotVersion(data: PackAndDataType) {
-        const p = data.data as common.AutopilotVersion;
+        const p = data.data.mavLinkData as common.AutopilotVersion;
         this.state.flightSwVersion = p.flightSwVersion;
         this.state.flightSwVersionString = [
             ((p.flightSwVersion >>> (8 * 2)) & 0xFF),
@@ -211,7 +211,7 @@ export class AirplaneOwl02 implements AirplaneOwl02Interface {
 
     protected parseAck(data: PackAndDataType) {
         this.ackPackStream.next(data as PackAndDataType<common.CommandAck>);
-        const p = data.data as common.CommandAck;
+        const p = data.data.mavLinkData as common.CommandAck;
         // TODO
         console.log('[AirplaneOwl02] CommandAck:', p);
         const cmdId = p.command;
@@ -220,7 +220,7 @@ export class AirplaneOwl02 implements AirplaneOwl02Interface {
     }
 
     protected parseGpsPos(data: PackAndDataType) {
-        const p = data.data as common.GlobalPositionInt;
+        const p = data.data.mavLinkData as common.GlobalPositionInt;
         this.state.gpsPosition.lat = p.lat / 1e7;
         this.state.gpsPosition.lon = p.lon / 1e7;
         this.state.gpsPosition.alt = p.alt / 1e4;
@@ -229,7 +229,7 @@ export class AirplaneOwl02 implements AirplaneOwl02Interface {
     }
 
     protected parseBatteryStatusAcfly(data: PackAndDataType) {
-        const p = data.data as commonACFly.BatteryStatusAcfly;
+        const p = data.data.mavLinkData as commonACFly.BatteryStatusAcfly;
         // 电池电压，单位100mv
         // 无效值: 0xFFFFFFFF
         p.voltage;
@@ -314,9 +314,9 @@ export class AirplaneOwl02 implements AirplaneOwl02Interface {
     public getStatusTextList(): { text: string, time: moment.Moment, severity: number }[] {
         return this.cacheStateText.toArray().map(T => {
             return {
-                text: T.data?.text ?? '',
+                text: T.data?.mavLinkData.text ?? '',
                 time: T.time,
-                severity: T.data?.severity ?? 0,
+                severity: T.data?.mavLinkData.severity ?? 0,
             };
         });
     }
@@ -324,7 +324,7 @@ export class AirplaneOwl02 implements AirplaneOwl02Interface {
     public waitAckOnce(timeoutMs: number, command: common.MavCmd) {
         return firstValueFrom(this.ackPackStream.pipe(
             filter((T): T is PackAndDataType<common.CommandAck> => !!T),
-            filter(P => P.data.command === command),
+            filter(P => P.data.mavLinkData.command === command),
             timeoutWithoutError(timeoutMs, undefined),
         ));
     }
