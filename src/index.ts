@@ -55,11 +55,52 @@ m.getDecoderStream(1).observableData.subscribe({
     },
 });
 // 接收id 2 的数据
+let sq: string[] = [];
 m.getDecoderStream(2).observableData.subscribe({
     next: (data) => {
         // 处理接收到的数据
         // console.log('====== Received data [2]:', data);
-        console.log('====== Received data [2]:', data.MSG_NAME);
+        // console.log('====== Received data [2]:', data.MSG_NAME);
+        // switch (data.MSG_NAME) {
+        //     case 'HEARTBEAT':
+        //         // sq.push('.');
+        //         process.stdout.write('.');
+        //         break;
+        //     case 'BATTERY_STATUS':
+        //         // sq.push('-');
+        //         process.stdout.write('-');
+        //         break;
+        //     case 'SYS_STATUS':
+        //         // sq.push('*');
+        //         process.stdout.write('*');
+        //         break;
+        //     case 'SYSTEM_TIME':
+        //         // sq.push('/');
+        //         process.stdout.write('/');
+        //         break;
+        //     case 'RC_CHANNELS':
+        //         // sq.push('|');
+        //         process.stdout.write('|');
+        //         break;
+        //     case 'ATTITUDE':
+        //         // Attitude {
+        //         //     timeBootMs: 2291140,
+        //         //     roll: 0.017909057438373566,
+        //         //     pitch: 0.004482499789446592,
+        //         //     yaw: 2.1127374172210693,
+        //         //     rollspeed: -0.002332122763618827,
+        //         //     pitchspeed: 0.0029339175671339035,
+        //         //     yawspeed: 0.0014431369490921497
+        //         // }
+        //         process.stdout.write('|');
+        //         break;
+        //     default:
+        //         // sq.push('?');
+        //         // console.log(sq.join(''));
+        //         // sq = [];
+        //         process.stdout.write('\n');
+        //         console.log('====== Received data [2]:', data);
+        // }
         // console.log('====== Received data [2]:');
         // console.log(JSON.stringify(data))
     },
@@ -75,6 +116,47 @@ m.getMavLinkAllDataObservable().subscribe({
     next: (data) => {
         // 处理接收到的所有数据
         // console.log('====== Received data [all]:', data);
+
+        switch (data.data.MSG_NAME) {
+            case 'HEARTBEAT':
+                // sq.push('.');
+                process.stdout.write(`${data.id}.`);
+                break;
+            case 'BATTERY_STATUS':
+                // sq.push('-');
+                process.stdout.write(`${data.id}-`);
+                break;
+            case 'SYS_STATUS':
+                // sq.push('*');
+                process.stdout.write(`${data.id}*`);
+                break;
+            case 'SYSTEM_TIME':
+                // sq.push('/');
+                process.stdout.write(`${data.id}/`);
+                break;
+            case 'RC_CHANNELS':
+                // sq.push('|');
+                process.stdout.write(`${data.id}|`);
+                break;
+            case 'ATTITUDE':
+                // Attitude {
+                //     timeBootMs: 2291140,
+                //     roll: 0.017909057438373566,
+                //     pitch: 0.004482499789446592,
+                //     yaw: 2.1127374172210693,
+                //     rollspeed: -0.002332122763618827,
+                //     pitchspeed: 0.0029339175671339035,
+                //     yawspeed: 0.0014431369490921497
+                // }
+                process.stdout.write(`${data.id}|`);
+                break;
+            default:
+                // sq.push('?');
+                // console.log(sq.join(''));
+                // sq = [];
+                process.stdout.write('\n');
+                console.log(`====== Received data [${data.id}]:`, data);
+        }
     },
 });
 
@@ -113,14 +195,14 @@ const heartbeatTimer = new UtilTimer(
         commandHeartbeat.systemStatus = minimal.MavState.ACTIVE;
     },
     console,
-    1000,
+    500,
 );
 
 port.on('open', async () => {
     // the port is open - we're ready to send data
     // 串口已打开 - 准备发送数据
 
-    // heartbeatTimer.start();
+    heartbeatTimer.start();
 
     // 构造一个心跳包，填充数据并发送
     console.log('====== commandHeartbeat');
@@ -167,7 +249,28 @@ port.on('open', async () => {
     console.log(unlock);
     // await m.sendMsg(unlock, 0);
     // await m.sendMsg(unlock, 1);
+    await sleep(1000);
     await m.sendMsg(unlock, 2);
+
+    unlock.arm = 1;
+    await sleep(3000);
+    await m.sendMsg(unlock, 2);
+
+    unlock.arm = 0;
+    await sleep(3000);
+    await m.sendMsg(unlock, 2);
+
+
+    await sleep(1000);
+    await m.sendMsg(unlock, 1);
+
+    unlock.arm = 1;
+    await sleep(3000);
+    await m.sendMsg(unlock, 1);
+
+    unlock.arm = 0;
+    await sleep(3000);
+    await m.sendMsg(unlock, 1);
 
     // console.log('====== CommandLong COMPONENT_ARM_DISARM');
     // const cl = new common.CommandLong();
