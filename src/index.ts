@@ -1,7 +1,7 @@
 import {SerialPort} from 'serialport';
 import {
     ardupilotmega,
-    common,
+    common, MavLinkData,
     MavLinkPacketRegistry,
     MavLinkProtocolV2,
     minimal,
@@ -43,34 +43,38 @@ const m = new CustomProtocolTransformManager(port, new MavLinkProtocolV2(1, 1), 
 m.getDecoderStream(0).observableData.subscribe({
     next: (data) => {
         // 处理接收到的数据
-        console.log('====== Received data [0]:', data);
+        // console.log('====== Received data [0]:', data);
     },
 });
 // 接收id 1 的数据
 m.getDecoderStream(1).observableData.subscribe({
-    next: (data) => {
+    next: (data: MavLinkData) => {
         // 处理接收到的数据
-        console.log('====== Received data [1]:', data);
+        // console.log('====== Received data [1]:', data);
+        // console.log('====== Received data [1]:', data);
     },
 });
 // 接收id 2 的数据
 m.getDecoderStream(2).observableData.subscribe({
     next: (data) => {
         // 处理接收到的数据
-        console.log('====== Received data [2]:', data);
+        // console.log('====== Received data [2]:', data);
+        console.log('====== Received data [2]:', data.MSG_NAME);
+        // console.log('====== Received data [2]:');
+        // console.log(JSON.stringify(data))
     },
 });
 // 接收id 3 的数据
 m.getDecoderStream(3).observableData.subscribe({
     next: (data) => {
         // 处理接收到的数据
-        console.log('====== Received data [3]:', data);
+        // console.log('====== Received data [3]:', data);
     },
 });
 m.getMavLinkAllDataObservable().subscribe({
     next: (data) => {
         // 处理接收到的所有数据
-        console.log('====== Received data [all]:', data);
+        // console.log('====== Received data [all]:', data);
     },
 });
 
@@ -160,10 +164,10 @@ port.on('open', async () => {
     unlock.targetComponent = 1;
     // unlock.targetSystem = 0;
     // unlock.targetComponent = 0;
-    console.log(unlock)
+    console.log(unlock);
     // await m.sendMsg(unlock, 0);
     // await m.sendMsg(unlock, 1);
-    // await m.sendMsg(unlock, 2);
+    await m.sendMsg(unlock, 2);
 
     // console.log('====== CommandLong COMPONENT_ARM_DISARM');
     // const cl = new common.CommandLong();
@@ -188,15 +192,15 @@ port.on('open', async () => {
     // await m.sendMsg(cl, 1);
     // await m.sendMsg(cl, 2);
     // await m.sendMsg(cl, 2);
-    for (let i = 0; i <= 16; i++) {
-        // await m.sendMsg(cl, i);
-        for (let j = 0; j < 1; j++) {
-            await m.sendMsg(unlock, i);
-            await sleep(1);
-        }
-        // await m.sendMsg(cl, i);
-        await sleep(50);
-    }
+    // for (let i = 0; i <= 16; i++) {
+    //     // await m.sendMsg(cl, i);
+    //     for (let j = 0; j < 1; j++) {
+    //         await m.sendMsg(unlock, i);
+    //         await sleep(1);
+    //     }
+    //     // await m.sendMsg(cl, i);
+    //     await sleep(50);
+    // }
 
     console.log('====== sendEnd');
 });

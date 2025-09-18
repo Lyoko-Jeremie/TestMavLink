@@ -13,6 +13,11 @@ import {
 } from "./CustomProtocolTransform";
 import {filter, map, Observable, Subject} from 'rxjs';
 
+export type MavLinkPacket2DataProcessType<Data extends MavLinkData = MavLinkData> = {
+    mavLinkData: Data,
+    MSG_NAME: string
+};
+
 export class MavLinkPacket2DataTransform extends Transform {
     constructor(
         public process: (packet: MavLinkPacket) => MavLinkData | undefined,
@@ -32,7 +37,7 @@ export class MavLinkPacket2DataTransform extends Transform {
 
 export interface PackAndDataType<Data extends MavLinkData = MavLinkData> {
     packet: MavLinkPacket;
-    data: Data;
+    data: MavLinkPacket2DataProcessType<Data>;
 }
 
 export class MavLinkPacket2Data {
@@ -55,12 +60,16 @@ export class MavLinkPacket2Data {
         );
     }
 
-    public process(packet: MavLinkPacket): MavLinkData | undefined {
+    public process(packet: MavLinkPacket): MavLinkPacket2DataProcessType | undefined {
         // 使用注册表将消息ID映射到数据类，并使用协议解析器将负载数据转换为相应的数据对象
         const clazz = this.REGISTRY[packet.header.msgid];
         if (clazz) {
             const data = packet.protocol.data(packet.payload, clazz);
-            return data;
+            // console.log('[MavLinkPacket2Data] Decoded packet :', packet.header.msgid, clazz.MSG_NAME, data);
+            return {
+                mavLinkData: data,
+                MSG_NAME: clazz.MSG_NAME,
+            };
         } else {
             console.warn('[MavLinkPacket2Data] Cannot decode packet :', packet.header.msgid, packet);
         }
@@ -73,7 +82,7 @@ export class MavLinkPacket2Data {
 
     protected subjectPackAndData?: Observable<PackAndDataType>;
 
-    public observable(): Observable<MavLinkData> {
+    public observable(): Observable<MavLinkPacket2DataProcessType> {
         return this.observablePackAndData().pipe(
             map((d: PackAndDataType) => {
                 return d.data;
@@ -139,7 +148,7 @@ export class MavLinkDecodeStream {
         ).stream();
     }
 
-    public get observableData(): Observable<MavLinkData> {
+    public get observableData(): Observable<MavLinkPacket2DataProcessType> {
         return MavLinkPacket2Data.create(
             this.REGISTRY,
             this.mavLinkDecodeStream,
