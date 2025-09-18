@@ -37,7 +37,7 @@ registerCustomMessageMagicNumber('602', MSG_ID_MAGIC_NUMBER['602']);    // Batte
 // 初始化 SerialPort 实例
 const port = new SerialPort({path: comPortString, baudRate: 921600});
 
-const m = new CustomProtocolTransformManager(port, new MavLinkProtocolV2(1, 1), REGISTRY);
+const m = new CustomProtocolTransformManager(port, new MavLinkProtocolV2(1, 1), REGISTRY, false);
 
 // 接收id 0 的数据
 m.getDecoderStream(0).observableData.subscribe({

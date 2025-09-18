@@ -182,7 +182,7 @@ export class CustomProtocolTransformManager {
             readableObjectMode: true,
             writableObjectMode: true,
         })
-        port.pipe(new CustomProtocolTransformFromSerialPort(true)).pipe(this.customProtocolReadStream);
+        port.pipe(new CustomProtocolTransformFromSerialPort(debug)).pipe(this.customProtocolReadStream);
 
         this.customProtocolReadStream.on('data', (data: CustomProtocolPackage) => {
             this.onPacket(data);
@@ -194,7 +194,7 @@ export class CustomProtocolTransformManager {
             readableObjectMode: true,
             writableObjectMode: true,
         });
-        this.customProtocolWriteStream.pipe(new CustomProtocolTransformToSerialPort(true)).pipe(port);
+        this.customProtocolWriteStream.pipe(new CustomProtocolTransformToSerialPort(debug)).pipe(port);
 
     }
 

@@ -81,15 +81,15 @@ function detectFistPackFromUint8Array(debug: boolean, buffer: Uint8Array): {
     debug && console.log('[From SP] Frame size:', frameSize);
     if (buffer.length < startIndex + frameSize) {
         // not enough data for a complete frame, wait for more data
-        console.log('[From SP] Not enough data for a complete frame, waiting for more data');
+        debug && console.log('[From SP] Not enough data for a complete frame, waiting for more data');
         return undefined;
     }
     // get the end of the frame , check if the frame ends with 0xCC
     const endIndex = startIndex + frameSize;
     if (buffer[endIndex - 1] !== 0xCC) {
         // bad frame end, maybe a broken frame
-        console.log('[From SP] Bad frame end:', buffer.subarray(startIndex, endIndex));
-        console.log(Buffer.from(buffer.subarray(startIndex, endIndex)));
+        console.error('[From SP] Bad frame end:', buffer.subarray(startIndex, endIndex));
+        console.error(Buffer.from(buffer.subarray(startIndex, endIndex)));
         return undefined;
     }
 
@@ -102,7 +102,7 @@ function detectFistPackFromUint8Array(debug: boolean, buffer: Uint8Array): {
     const calculatedChecksum = frame.subarray(0, -2).reduce((acc, byte) => acc + byte, 0) & 0xFF;
     if (checksum !== calculatedChecksum) {
         // checksum error, maybe a broken frame
-        console.log('[From SP] Checksum error:', checksum, '!=', calculatedChecksum);
+        console.error('[From SP] Checksum error:', checksum, '!=', calculatedChecksum);
         // TODO remove this frame from the buffer
         return undefined;
     }
