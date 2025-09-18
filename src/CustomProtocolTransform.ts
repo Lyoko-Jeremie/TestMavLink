@@ -49,7 +49,7 @@ function detectFistPackFromUint8Array(debug: boolean, buffer: Uint8Array): {
     payloadSlice: Uint8Array,
 } | undefined {
     // 帧头1	帧头2	ID	                    数据长度	    PLAYLOAD(data)	    uint8_t校验和	帧尾
-    // 0xAA	0xBB	1-16（用于判断设备号） 	max值（58）	max值（58个字节）		checksum        0xCC
+    // 0xAA	0xBB	1-16（用于判断设备号） 	max值（80）	max值（80个字节）		checksum        0xCC
     //
     // 备注：id为1-16个天空端的设备ID
     //       playload为天空端设备回传的信息或者地面站发送的cmd，地面站与天空端之间采用mavlink数据传输。先将基本数据打包成mavlink，打包后的mavlink数据放到playload
@@ -90,6 +90,7 @@ function detectFistPackFromUint8Array(debug: boolean, buffer: Uint8Array): {
         // bad frame end, maybe a broken frame
         console.error('[From SP] Bad frame end:', buffer.subarray(startIndex, endIndex));
         console.error(Buffer.from(buffer.subarray(startIndex, endIndex)));
+        // TODO skip to next 0xCC ??????????
         return undefined;
     }
 
@@ -142,7 +143,7 @@ export class CustomProtocolTransformFromSerialPort extends Transform {
 
     _transform(chunk: Buffer, encoding: BufferEncoding, callback: TransformCallback): void {
         // 帧头1	帧头2	ID	                    数据长度	    PLAYLOAD(data)	    uint8_t校验和	帧尾
-        // 0xAA	0xBB	1-16（用于判断设备号） 	max值（58）	max值（58个字节）		checksum        0xCC
+        // 0xAA	0xBB	1-16（用于判断设备号） 	max值（80）	max值（80个字节）		checksum        0xCC
         //
         // 备注：id为1-16个天空端的设备ID
         //       playload为天空端设备回传的信息或者地面站发送的cmd，地面站与天空端之间采用mavlink数据传输。先将基本数据打包成mavlink，打包后的mavlink数据放到playload
