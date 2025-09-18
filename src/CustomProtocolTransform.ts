@@ -38,7 +38,7 @@ export class CustomProtocolTransformToSerialPort extends Transform {
     }
 }
 
-function detectFistPackFromUint8Array(debug: boolean, buffer: Uint8Array): {
+type DetectFirstPackFromUint8ArrayReturnType = {
     startIndex: number,
     endIndex: number,
     payloadSize: number,
@@ -47,6 +47,13 @@ function detectFistPackFromUint8Array(debug: boolean, buffer: Uint8Array): {
     calculatedChecksum: number,
     id: number,
     payloadSlice: Uint8Array,
+}
+
+function detectFirstPackFromUint8Array(debug: boolean, buffer: Uint8Array): {
+    ok?: DetectFirstPackFromUint8ArrayReturnType,
+    bad?: {
+        skipEndIndex: number,
+    },
 } | undefined {
     // 帧头1	帧头2	ID	                    数据长度	    PLAYLOAD(data)	    uint8_t校验和	帧尾
     // 0xAA	0xBB	1-16（用于判断设备号） 	max值（80）	max值（80个字节）		checksum        0xCC
@@ -91,6 +98,18 @@ function detectFistPackFromUint8Array(debug: boolean, buffer: Uint8Array): {
         console.error('[From SP] Bad frame end:', buffer.subarray(startIndex, endIndex));
         console.error(Buffer.from(buffer.subarray(startIndex, endIndex)));
         // TODO skip to next 0xCC ??????????
+        // try to find next 0xccaabb
+        let nextStartIndex = -1;
+        for (let i = 0; i < buffer.length - 3; i++) {
+            if (buffer[i] === 0xCC && buffer[i + 1] === 0xAA && buffer[i + 2] === 0xBB) {
+                nextStartIndex = i + 1;
+                return {
+                    bad: {
+                        skipEndIndex: nextStartIndex,
+                    },
+                };
+            }
+        }
         return undefined;
     }
 
@@ -116,14 +135,16 @@ function detectFistPackFromUint8Array(debug: boolean, buffer: Uint8Array): {
     debug && console.log(payload);
 
     return {
-        startIndex,
-        endIndex,
-        payloadSize,
-        frameSize,
-        checksum,
-        calculatedChecksum,
-        id,
-        payloadSlice: payload,
+        ok: {
+            startIndex,
+            endIndex,
+            payloadSize,
+            frameSize,
+            checksum,
+            calculatedChecksum,
+            id,
+            payloadSlice: payload,
+        },
     };
 }
 
@@ -156,10 +177,21 @@ export class CustomProtocolTransformFromSerialPort extends Transform {
         newBuffer.set(chunk, this.buffer.length);
         this.buffer = newBuffer;
 
-        const detectedFrame = detectFistPackFromUint8Array(this.debug ?? false, this.buffer);
-        if (!detectedFrame) {
+        const r = detectFirstPackFromUint8Array(this.debug ?? false, this.buffer);
+        if (!r) {
             // no complete frame found, wait for more data
             this.debug && console.log('[From SP] No complete frame found, waiting for more data');
+            return callback();
+        }
+        const detectedFrame = r.ok;
+        if (r.bad) {
+            // bad frame, skip the bad data
+            this.buffer = this.buffer.subarray(r.bad!.skipEndIndex);
+            return callback();
+        }
+        if (!detectedFrame) {
+            // never go there
+            console.error('CustomProtocolTransformFromSerialPort _transform() detectedFrame is undefined. never go there.');
             return callback();
         }
 
@@ -191,8 +223,8 @@ export class CustomProtocolTransformFromSerialPort extends Transform {
 
             while (remainingBuffer.length > 0) {
 
-                const detectedFrame = detectFistPackFromUint8Array(this.debug ?? false, remainingBuffer);
-                if (!detectedFrame) {
+                const r = detectFirstPackFromUint8Array(this.debug ?? false, remainingBuffer);
+                if (!r) {
                     // no complete frame found
                     this.debug && console.log('[From SP] No complete frame found, but remaining data :', remainingBuffer);
 
@@ -204,7 +236,19 @@ export class CustomProtocolTransformFromSerialPort extends Transform {
                     this.buffer = remainData;
 
                     return callback();
+                }
+                if (r.bad) {
+                    // bad frame, skip the bad data
+                    this.buffer = remainingBuffer.subarray(r.bad!.skipEndIndex);
+                    return callback();
                 } else {
+                    const detectedFrame = r.ok;
+                    if (!detectedFrame) {
+                        // never go there
+                        console.error('CustomProtocolTransformFromSerialPort _flush() detectedFrame is undefined. never go there.');
+                        return callback();
+                    }
+
                     // we have a complete frame, emit it
                     const rData: CustomProtocolPackage = {
                         payload: new Uint8Array(detectedFrame.payloadSlice.length),
