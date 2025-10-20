@@ -117,6 +117,8 @@ m.getMavLinkAllDataObservable().subscribe({
         // 处理接收到的所有数据
         // console.log('====== Received data [all]:', data);
 
+        // CommandAck
+
         switch (data.data.MSG_NAME) {
             case 'HEARTBEAT':
                 // sq.push('.');
@@ -154,7 +156,7 @@ m.getMavLinkAllDataObservable().subscribe({
                 // sq.push('?');
                 // console.log(sq.join(''));
                 // sq = [];
-                process.stdout.write('\n');
+                process.stdout.write('\ndata.data.MSG_NAME\n');
                 console.log(`====== Received data [${data.id}]:`, data);
         }
     },
@@ -236,41 +238,41 @@ port.on('open', async () => {
     // await m.sendMsg(commandSystemTime, 1);
     // // await m.sendMsg(commandSystemTime, 3);
 
-    console.log('====== ComponentArmDisarmCommand');
-    // console.log('common.ComponentArmDisarmCommand.PAYLOAD_LENGTH', common.ComponentArmDisarmCommand.PAYLOAD_LENGTH);
-    const unlock = new common.ComponentArmDisarmCommand(1, 1);
+    // console.log('====== ComponentArmDisarmCommand');
+    // // console.log('common.ComponentArmDisarmCommand.PAYLOAD_LENGTH', common.ComponentArmDisarmCommand.PAYLOAD_LENGTH);
+    // const unlock = new common.ComponentArmDisarmCommand(1, 1);
+    // // unlock.arm = 1;
+    // unlock.arm = 0;
+    // // unlock.force = 1;
+    // unlock.targetSystem = 1;
+    // unlock.targetComponent = 1;
+    // // unlock.targetSystem = 0;
+    // // unlock.targetComponent = 0;
+    // console.log(unlock);
+    // // await m.sendMsg(unlock, 0);
+    // // await m.sendMsg(unlock, 1);
+    // await sleep(1000);
+    // await m.sendMsg(unlock, 2);
+    //
     // unlock.arm = 1;
-    unlock.arm = 0;
-    // unlock.force = 1;
-    unlock.targetSystem = 1;
-    unlock.targetComponent = 1;
-    // unlock.targetSystem = 0;
-    // unlock.targetComponent = 0;
-    console.log(unlock);
-    // await m.sendMsg(unlock, 0);
+    // await sleep(3000);
+    // await m.sendMsg(unlock, 2);
+    //
+    // unlock.arm = 0;
+    // await sleep(3000);
+    // await m.sendMsg(unlock, 2);
+    //
+    //
+    // await sleep(1000);
     // await m.sendMsg(unlock, 1);
-    await sleep(1000);
-    await m.sendMsg(unlock, 2);
-
-    unlock.arm = 1;
-    await sleep(3000);
-    await m.sendMsg(unlock, 2);
-
-    unlock.arm = 0;
-    await sleep(3000);
-    await m.sendMsg(unlock, 2);
-
-
-    await sleep(1000);
-    await m.sendMsg(unlock, 1);
-
-    unlock.arm = 1;
-    await sleep(3000);
-    await m.sendMsg(unlock, 1);
-
-    unlock.arm = 0;
-    await sleep(3000);
-    await m.sendMsg(unlock, 1);
+    //
+    // unlock.arm = 1;
+    // await sleep(3000);
+    // await m.sendMsg(unlock, 1);
+    //
+    // unlock.arm = 0;
+    // await sleep(3000);
+    // await m.sendMsg(unlock, 1);
 
     // console.log('====== CommandLong COMPONENT_ARM_DISARM');
     // const cl = new common.CommandLong();
@@ -304,6 +306,12 @@ port.on('open', async () => {
     //     // await m.sendMsg(cl, i);
     //     await sleep(50);
     // }
+
+    console.log('====== ExtDroneMoveCommand');
+    const move = new commonACFly.ExtDroneMoveCommand();
+    move.direction = 1;
+    move.distance = 100;
+    await m.sendMsg(move, 2);
 
     console.log('====== sendEnd');
 });

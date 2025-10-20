@@ -200,5 +200,7 @@ export const MSG_ID_MAGIC_NUMBER: Record<string, number> = {
   '602': 159,
   '9000': 113,
   '9005': 117,
+  '12918': 139,
+  '12919': 7,
   '12920': 20,
 }
