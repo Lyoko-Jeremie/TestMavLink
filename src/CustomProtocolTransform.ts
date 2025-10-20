@@ -21,9 +21,9 @@ export class CustomProtocolTransformToSerialPort extends Transform {
 
     _transform(pack: CustomProtocolPackage, encoding: BufferEncoding, callback: TransformCallback): void {
         // 帧头1	帧头2	ID	                    数据长度	    PLAYLOAD(data)	    uint8_t校验和	帧尾
-        // 0xAA	0xBB	1-16（用于判断设备号） 	max值（58）	max值（58个字节）		checksum        0xCC
+        // 0xAA	0xBB	0-15（用于判断设备号） 	max值（58）	max值（58个字节）		checksum        0xCC
         //
-        // 备注：id为1-16个天空端的设备ID
+        // 备注：id为0-15个天空端的设备ID
         //       playload为天空端设备回传的信息或者地面站发送的cmd，地面站与天空端之间采用mavlink数据传输。先将基本数据打包成mavlink，打包后的mavlink数据放到playload
         //
         const chunk = pack.payload;
@@ -56,9 +56,9 @@ function detectFirstPackFromUint8Array(debug: boolean, buffer: Uint8Array): {
     },
 } | undefined {
     // 帧头1	帧头2	ID	                    数据长度	    PLAYLOAD(data)	    uint8_t校验和	帧尾
-    // 0xAA	0xBB	1-16（用于判断设备号） 	max值（80）	max值（80个字节）		checksum        0xCC
+    // 0xAA	0xBB	0-15（用于判断设备号） 	max值（80）	max值（80个字节）		checksum        0xCC
     //
-    // 备注：id为1-16个天空端的设备ID
+    // 备注：id为0-15个天空端的设备ID
     //       playload为天空端设备回传的信息或者地面站发送的cmd，地面站与天空端之间采用mavlink数据传输。先将基本数据打包成mavlink，打包后的mavlink数据放到playload
     //
 
@@ -164,9 +164,9 @@ export class CustomProtocolTransformFromSerialPort extends Transform {
 
     _transform(chunk: Buffer, encoding: BufferEncoding, callback: TransformCallback): void {
         // 帧头1	帧头2	ID	                    数据长度	    PLAYLOAD(data)	    uint8_t校验和	帧尾
-        // 0xAA	0xBB	1-16（用于判断设备号） 	max值（80）	max值（80个字节）		checksum        0xCC
+        // 0xAA	0xBB	0-15（用于判断设备号） 	max值（80）	max值（80个字节）		checksum        0xCC
         //
-        // 备注：id为1-16个天空端的设备ID
+        // 备注：id为0-15个天空端的设备ID
         //       playload为天空端设备回传的信息或者地面站发送的cmd，地面站与天空端之间采用mavlink数据传输。先将基本数据打包成mavlink，打包后的mavlink数据放到playload
         //
         this.debug && console.log('[From SP] Received chunk:', chunk);

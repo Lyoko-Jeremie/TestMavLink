@@ -150,7 +150,7 @@ m.getMavLinkAllDataObservable().subscribe({
                 //     pitchspeed: 0.0029339175671339035,
                 //     yawspeed: 0.0014431369490921497
                 // }
-                process.stdout.write(`${data.id}|`);
+                process.stdout.write(`${data.id}$`);
                 break;
             default:
                 // sq.push('?');
@@ -307,11 +307,18 @@ port.on('open', async () => {
     //     await sleep(50);
     // }
 
-    console.log('====== ExtDroneMoveCommand');
-    const move = new commonACFly.ExtDroneMoveCommand();
-    move.direction = 1;
-    move.distance = 100;
-    await m.sendMsg(move, 2);
+    // console.log('====== ExtDroneMoveCommand');
+    // const move = new commonACFly.ExtDroneMoveCommand();
+    // move.direction = 1;
+    // move.distance = 100;
+    // await m.sendMsg(move, 2);
+
+    console.log('====== ExtDroneGotoCmdCommand');
+    const go = new commonACFly.ExtDroneGotoCmdCommand();
+    go.target_x = 100;
+    go.target_y = 100;
+    go.target_z = 100;
+    await m.sendMsg(go, 2);
 
     console.log('====== sendEnd');
 });
