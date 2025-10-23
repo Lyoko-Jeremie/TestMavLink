@@ -2869,15 +2869,27 @@ export enum MavCmd {
 
   /**
    * xinguangfei ext goto target loc
-   * @param1 target_X null
-   * @param1 target_Y null
-   * @param1 target_Z null
+   * @param1 target_X (min: 0, max: 1) 0:fllowline 1:lock apritag
+   * @param2 target_Y null
+   * @param3 target_Z null
    * @param4 Empty
    * @param5 Empty
    * @param6 Empty
    * @param7 Empty
    */
   'EXT_DRONE_GOTO_CMD'                             = 279,
+
+  /**
+   * xinguangfei ext goto target loc
+   * @param1 cmd null
+   * @param2 Empty
+   * @param3 Empty
+   * @param4 Empty
+   * @param5 Empty
+   * @param6 Empty
+   * @param7 Empty
+   */
+  'EXT_DRONE_OPEMMV_CMD'                           = 280,
 
   /**
    * xinguangfei ext set mode
@@ -23648,6 +23660,78 @@ export class BatteryStatusAcfly extends MavLinkData {
 }
 
 /**
+ * xinguangfei pair code request
+ */
+export class OneToMoreAddrRequestXinguangfei extends MavLinkData {
+  static MSG_ID = 800
+  static MSG_NAME = 'ONE_TO_MORE_ADDR_REQUEST_XINGUANGFEI'
+  static PAYLOAD_LENGTH = 9
+  static MAGIC_NUMBER = 31
+
+  static FIELDS = [
+    new MavLinkPacketField('request', 'request', 0, false, 1, 'uint8_t', ''),
+    new MavLinkPacketField('reserved', 'reserved', 1, false, 1, 'uint8_t[]', '', 8),
+  ]
+
+  constructor() {
+    super()
+    this.request = 0
+    this.reserved = []
+  }
+
+  /**
+   * request
+   */
+  request: uint8_t
+
+  /**
+   * reserved
+   */
+  reserved: uint8_t[]
+}
+
+/**
+ * Battery information. Updates GCS with flight controller battery status. Smart batteries also use
+ * this message, but may additionally send SMART_BATTERY_INFO.
+ */
+export class OneToMoreAddrXinguangfei extends MavLinkData {
+  static MSG_ID = 801
+  static MSG_NAME = 'ONE_TO_MORE_ADDR_XINGUANGFEI'
+  static PAYLOAD_LENGTH = 15
+  static MAGIC_NUMBER = 82
+
+  static FIELDS = [
+    new MavLinkPacketField('mtx_address', 'mtxAddress', 0, false, 1, 'uint8_t[]', '', 5),
+    new MavLinkPacketField('mrx_address_ack', 'mrxAddressAck', 5, false, 1, 'uint8_t[]', '%', 5),
+    new MavLinkPacketField('mrx_address_p1', 'mrxAddressP1', 10, false, 1, 'uint8_t[]', '%', 5),
+  ]
+
+  constructor() {
+    super()
+    this.mtxAddress = []
+    this.mrxAddressAck = []
+    this.mrxAddressP1 = []
+  }
+
+  /**
+   * mtx address
+   */
+  mtxAddress: uint8_t[]
+
+  /**
+   * mrx address ack
+   * Units: %
+   */
+  mrxAddressAck: uint8_t[]
+
+  /**
+   * mrx address p1
+   * Units: %
+   */
+  mrxAddressP1: uint8_t[]
+}
+
+/**
  * Cumulative distance traveled for each reported wheel.
  */
 export class WheelDistance extends MavLinkData {
@@ -23907,6 +23991,8 @@ export class HygrometerSensor extends MavLinkData {
    */
   humidity: uint16_t
 }
+
+import { CommandLong } from './common'
 
 /**
  * request vehicle to send WGA code.
@@ -29124,7 +29210,10 @@ export class ExtDroneGotoCmdCommand extends CommandLong {
   }
 
   /**
-   * null
+   * 0:fllowline 1:lock apritag
+   *
+   * @min: 0
+   * @max: 1
    */
   get target_x() {
     return this._param1
@@ -29137,19 +29226,41 @@ export class ExtDroneGotoCmdCommand extends CommandLong {
    * null
    */
   get target_y() {
-    return this._param1
+    return this._param2
   }
   set target_y(value: number) {
-    this._param1 = value
+    this._param2 = value
   }
 
   /**
    * null
    */
   get target_z() {
-    return this._param1
+    return this._param3
   }
   set target_z(value: number) {
+    this._param3 = value
+  }
+}
+
+/**
+ * xinguangfei ext goto target loc
+ */
+export class ExtDroneOpemmvCmdCommand extends CommandLong {
+  constructor(targetSystem = 1, targetComponent = 1) {
+    super()
+    this.command = MavCmd.EXT_DRONE_OPEMMV_CMD as number
+    this.targetSystem = targetSystem
+    this.targetComponent = targetComponent
+  }
+
+  /**
+   * null
+   */
+  get cmd() {
+    return this._param1
+  }
+  set cmd(value: number) {
     this._param1 = value
   }
 }
@@ -32977,6 +33088,8 @@ export const REGISTRY: MavLinkPacketRegistry = {
   401: SupportedTunes,
   500: ComponentExtension43,
   602: BatteryStatusAcfly,
+  800: OneToMoreAddrRequestXinguangfei,
+  801: OneToMoreAddrXinguangfei,
   9000: WheelDistance,
   9005: WinchStatus,
   12918: OpenDroneIdArmStatus,
@@ -33079,6 +33192,7 @@ export const COMMANDS: MavLinkCommandRegistry = {
   [MavCmd.EXT_DRONE_SET_MODE]: ExtDroneSetModeCommand,
   [MavCmd.EXT_DRONE_VERSION_DETECT_MODE_SET]: ExtDroneVersionDetectModeSetCommand,
   [MavCmd.EXT_DRONE_GOTO_CMD]: ExtDroneGotoCmdCommand,
+  [MavCmd.EXT_DRONE_OPEMMV_CMD]: ExtDroneOpemmvCmdCommand,
   [MavCmd.EXT_DRONE_TOTAL]: ExtDroneTotalCommand,
   [MavCmd.ACTUATOR_TEST]: ActuatorTestCommand,
   [MavCmd.CONFIGURE_ACTUATOR]: ConfigureActuatorCommand,

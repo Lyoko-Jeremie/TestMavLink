@@ -2,8 +2,8 @@ import moment from "moment";
 import {
     AirplaneOwl02Interface,
     AirplaneOwl02State,
-    FlyModeAutoEnum,
-    FlyModeEnum,
+    // FlyModeAutoEnum,
+    // FlyModeEnum,
     FlyModeStableEnum
 } from "./AirplaneOwl02Interface";
 import {AirplaneManagerOwl02Interface} from "./AirplaneManagerOwl02Interface";
@@ -19,6 +19,18 @@ export interface MavLinkPacketRecord<D extends MavLinkData = MavLinkData> {
     pack: MavLinkPacket;
     msgId: uint8_t;
     data?: MavLinkPacket2DataProcessType<D>;
+}
+
+function mathMod(a: number, b: number): number {
+    return ((a % b) + b) % b;
+}
+
+function getNowTimestampMsUintFloat(): number {
+    // 使用当前时间戳（毫秒级整数），如果param7已指定则使用指定值
+    // 限制在 0 到 8388607 (2^23 - 1) 范围内，确保float能精确表示
+    const t = Math.floor(Date.now());
+    // mod 8388608 to fit in float precision
+    return mathMod(t, 8388608);
 }
 
 function ListSwitch<I extends number | string, R>(o: I, s: Record<I, R>, d: R): R {
@@ -141,38 +153,39 @@ export class AirplaneOwl02 implements AirplaneOwl02Interface {
     protected parseHeartbeat(data: PackAndDataType) {
         const p = data.data.mavLinkData as minimal.Heartbeat;
         this.state.isArmed = (p.baseMode & 0x80) === 0x80;
+        // TODO flyMode
         // this.state.flyMode = ListSwitch((p.customMode >>> (8 * 3)) & 0xFF, {
         //     2: FlyModeEnum.FLY_MODE_HOLD,
         //     3: FlyModeEnum.FLY_MODE_POSITION,
         //     4: FlyModeEnum.FLY_MODE_AUTO,
         // }, FlyModeEnum.INVALID);
-        this.state.flyMode = {
-            2: FlyModeEnum.FLY_MODE_HOLD,
-            3: FlyModeEnum.FLY_MODE_POSITION,
-            4: FlyModeEnum.FLY_MODE_AUTO,
-        }[(p.customMode >>> (8 * 3)) & 0xFF] ?? FlyModeEnum.INVALID;
-        switch (this.state.flyMode) {
-            case FlyModeEnum.FLY_MODE_AUTO:
-                this.state.flyModeAuto = ListSwitch((p.customMode >>> (8 * 4)) & 0xFF, {
-                    2: FlyModeAutoEnum.FLY_MODE_AUTO_TAKEOFF,
-                    3: FlyModeAutoEnum.FLY_MODE_AUTO_FOLLOW,
-                    4: FlyModeAutoEnum.FLY_MODE_AUTO_MISSION,
-                    5: FlyModeAutoEnum.FLY_MODE_AUTO_RTL,
-                    6: FlyModeAutoEnum.FLY_MODE_AUTO_LAND,
-                }, FlyModeAutoEnum.INVALID);
-                this.state.flyModeStable = FlyModeStableEnum.INVALID;
-                break;
-            case FlyModeEnum.FLY_MODE_POSITION:
-                this.state.flyModeStable = ListSwitch((p.customMode >>> (8 * 4)) & 0xFF, {
-                    0: FlyModeStableEnum.FLY_MODE_STABLE_NORMAL,
-                    2: FlyModeStableEnum.FLY_MODE_STABLE_OBSTACLE_AVOIDANCE,
-                }, FlyModeStableEnum.INVALID);
-                this.state.flyModeAuto = FlyModeAutoEnum.INVALID;
-            case FlyModeEnum.INVALID:
-            default:
-                this.state.flyModeAuto = FlyModeAutoEnum.INVALID;
-                this.state.flyModeStable = FlyModeStableEnum.INVALID;
-        }
+        // this.state.flyMode = {
+        //     2: FlyModeEnum.FLY_MODE_HOLD,
+        //     3: FlyModeEnum.FLY_MODE_POSITION,
+        //     4: FlyModeEnum.FLY_MODE_AUTO,
+        // }[(p.customMode >>> (8 * 3)) & 0xFF] ?? FlyModeEnum.INVALID;
+        // switch (this.state.flyMode) {
+        //     case FlyModeEnum.FLY_MODE_AUTO:
+        //         this.state.flyModeAuto = ListSwitch((p.customMode >>> (8 * 4)) & 0xFF, {
+        //             2: FlyModeAutoEnum.FLY_MODE_AUTO_TAKEOFF,
+        //             3: FlyModeAutoEnum.FLY_MODE_AUTO_FOLLOW,
+        //             4: FlyModeAutoEnum.FLY_MODE_AUTO_MISSION,
+        //             5: FlyModeAutoEnum.FLY_MODE_AUTO_RTL,
+        //             6: FlyModeAutoEnum.FLY_MODE_AUTO_LAND,
+        //         }, FlyModeAutoEnum.INVALID);
+        //         this.state.flyModeStable = FlyModeStableEnum.INVALID;
+        //         break;
+        //     case FlyModeEnum.FLY_MODE_POSITION:
+        //         this.state.flyModeStable = ListSwitch((p.customMode >>> (8 * 4)) & 0xFF, {
+        //             0: FlyModeStableEnum.FLY_MODE_STABLE_NORMAL,
+        //             2: FlyModeStableEnum.FLY_MODE_STABLE_OBSTACLE_AVOIDANCE,
+        //         }, FlyModeStableEnum.INVALID);
+        //         this.state.flyModeAuto = FlyModeAutoEnum.INVALID;
+        //     case FlyModeEnum.INVALID:
+        //     default:
+        //         this.state.flyModeAuto = FlyModeAutoEnum.INVALID;
+        //         this.state.flyModeStable = FlyModeStableEnum.INVALID;
+        // }
     }
 
     protected parseLandState(data: PackAndDataType) {
@@ -181,7 +194,7 @@ export class AirplaneOwl02 implements AirplaneOwl02Interface {
     }
 
     protected parseStatusText(data: PackAndDataType) {
-        const p = data.data as MavLinkPacket2DataProcessType<common.StatusText> ;
+        const p = data.data as MavLinkPacket2DataProcessType<common.StatusText>;
         this.cacheStateText.push({
             time: moment(),
             pack: data.packet,
@@ -346,16 +359,18 @@ export class AirplaneOwl02Commander {
     }
 
     lock() {
-        const p = new common.ComponentArmDisarmCommand();
+        const p = new commonACFly.ComponentArmDisarmCommand();
         p.arm = 0;
+        p._param7 = getNowTimestampMsUintFloat();
         p.targetSystem = 1;
         p.targetComponent = 1;
         return this.airplane.sendMsg(p);
     }
 
     unlock() {
-        const p = new common.ComponentArmDisarmCommand();
+        const p = new commonACFly.ComponentArmDisarmCommand();
         p.arm = 1;
+        p._param7 = getNowTimestampMsUintFloat();
         p.targetSystem = 1;
         p.targetComponent = 1;
         return this.airplane.sendMsg(p);
@@ -365,9 +380,9 @@ export class AirplaneOwl02Commander {
      * @param height m
      */
     takeoff(height: number) {
-        const p = new common.CommandLong();
-        p._param7 = height;
-        p.command = common.MavCmd.NAV_TAKEOFF_LOCAL;
+        const p = new commonACFly.ExtDroneTakeoffCommand();
+        p.height = height;
+        p._param7 = getNowTimestampMsUintFloat();
         p.targetSystem = 1;
         p.targetComponent = 1;
         return this.airplane.sendMsg(p);
@@ -378,59 +393,11 @@ export class AirplaneOwl02Commander {
      * @param landHeight    降落高度(相对起飞点)，单位m
      * @param yawAngle      飞机航向，单位度
      */
-    land(landHeight: number, yawAngle: number) {
-        const p = new common.NavLandCommand();
-        p._param4 = yawAngle;
-        p._param5 = 1000;
-        p._param6 = 1000;
-        p._param7 = landHeight;
-        p.command = common.MavCmd.NAV_LAND;
-        p.targetSystem = 1;
-        p.targetComponent = 1;
-        return this.airplane.sendMsg(p);
-    }
-
-    // 一键返航
-    rtl() {
-        const p = new common.NavLandCommand();
-        p.command = common.MavCmd.NAV_RETURN_TO_LAUNCH;
-        p.targetSystem = 1;
-        p.targetComponent = 1;
-        return this.airplane.sendMsg(p);
-    }
-
-    /**
-     * 一键控制载荷
-     * @param pwdChn    PWM通道;    [1，14]
-     * @param pwmRate    PWM占空比;  [0，65000]，50HZ
-     */
-    control_payload(pwdChn: number, pwmRate: number) {
-        const p = new common.NavLandCommand();
-        p.command = common.MavCmd.DO_SET_SERVO;
-        p._param1 = pwdChn;
-        p._param2 = pwmRate;
-        p.targetSystem = 1;
-        p.targetComponent = 1;
-        return this.airplane.sendMsg(p);
-    }
-
-    /**
-     * gps定点飞行
-     * @param lat       （纬度，单位°）
-     * @param lon       （经度，单位°）
-     * @param alt       （海拔高度，单位米）
-     * @param yawAngle  （航向角，-360 ~360，填nan则指向航点再飞过去， 填1000则不旋转偏航）
-     * @param speed     （速度，m/s）
-     */
-    gotoGps(lat: number, lon: number, alt: number, yawAngle: number, speed: number) {
-        const p = new common.CommandInt();
-        p._param1 = speed;
-        p._param2 = common.MavDoRepositionFlags.CHANGE_MODE;
-        p._param4 = yawAngle;
-        p._param5 = lat;
-        p._param6 = lon;
-        p._param7 = alt;
-        p.command = common.MavCmd.DO_REPOSITION;
+    land() {
+        const p = new commonACFly.ExtDroneLandCommand();
+        p.land_mode = 1;
+        p.landspeed = 0;
+        p._param7 = getNowTimestampMsUintFloat();
         p.targetSystem = 1;
         p.targetComponent = 1;
         return this.airplane.sendMsg(p);
@@ -444,89 +411,190 @@ export class AirplaneOwl02Commander {
      * @param yawAngle  （航向角，-360 ~360，填nan则指向航点再飞过去， 填1000则不旋转偏航）
      * @param speed     （速度，m/s）
      */
-    gotoLocal(x: number, y: number, h: number, yawAngle: number, speed: number) {
-        const p = new common.CommandLong();
-        p._param1 = speed;
-        p._param2 = commonACFly.MavFrame.BODY_FLU;
-        p._param4 = yawAngle;
-        p._param5 = x;
-        p._param6 = y;
-        p._param7 = h;
-        p.command = common.MavCmd.DO_REPOSITION;
+    goto(x: number, y: number, h: number, yawAngle: number, speed: number) {
+        const p = new commonACFly.ExtDroneGotoCmdCommand();
+        p.target_x = x;
+        p.target_y = y;
+        p.target_z = h;
+        p._param7 = getNowTimestampMsUintFloat();
         p.targetSystem = 1;
         p.targetComponent = 1;
         return this.airplane.sendMsg(p);
+    }
+
+    // /**
+    //  * TODO
+    //  * @param mode
+    //  * @param subMode
+    //  */
+    // setFlyMode(mode: FlyModeEnum, subMode: FlyModeAutoEnum | FlyModeStableEnum) {
+    //     const p = new common.NavLandCommand();
+    //     p._param1 = 1;
+    //     switch (mode) {
+    //         case FlyModeEnum.FLY_MODE_HOLD:
+    //             p._param2 = 2;
+    //             break;
+    //         case FlyModeEnum.FLY_MODE_POSITION:
+    //             p._param2 = 3;
+    //             switch (subMode) {
+    //                 case FlyModeStableEnum.FLY_MODE_STABLE_NORMAL:
+    //                     p._param3 = 0;
+    //                     break;
+    //                 case FlyModeStableEnum.FLY_MODE_STABLE_OBSTACLE_AVOIDANCE:
+    //                     p._param3 = 2;
+    //                     break;
+    //                 case FlyModeStableEnum.INVALID:
+    //                 default:
+    //                     console.warn('[AirplaneOwl02Commander] setFlyMode invalid subMode for position mode', subMode);
+    //                     return Promise.reject(new Error('[AirplaneOwl02Commander] setFlyMode invalid subMode for position mode ' + subMode));
+    //             }
+    //             break;
+    //         case FlyModeEnum.FLY_MODE_AUTO:
+    //             p._param2 = 4;
+    //             switch (subMode) {
+    //                 case FlyModeAutoEnum.FLY_MODE_AUTO_FOLLOW:
+    //                     p._param3 = 3;
+    //                     break;
+    //                 case FlyModeAutoEnum.FLY_MODE_AUTO_MISSION:
+    //                     p._param3 = 4;
+    //                     break;
+    //                 case FlyModeAutoEnum.FLY_MODE_AUTO_RTL:
+    //                     p._param3 = 5;
+    //                     break;
+    //                 case FlyModeAutoEnum.FLY_MODE_AUTO_LAND:
+    //                     p._param3 = 6;
+    //                     break;
+    //                 case FlyModeAutoEnum.FLY_MODE_AUTO_TAKEOFF:
+    //                 // (不可设置，只反馈)
+    //                 // p._param3 = 2;
+    //                 // break;
+    //                 case FlyModeAutoEnum.INVALID:
+    //                 default:
+    //                     console.warn('[AirplaneOwl02Commander] setFlyMode invalid subMode for auto mode', subMode);
+    //                     return Promise.reject(new Error('[AirplaneOwl02Commander] setFlyMode invalid subMode for auto mode ' + subMode));
+    //             }
+    //             break;
+    //         case FlyModeEnum.FLY_MODE_OFF_BOARD:
+    //         case FlyModeEnum.INVALID:
+    //         default:
+    //             console.warn('[AirplaneOwl02Commander] setFlyMode invalid mode', mode);
+    //             return Promise.reject(new Error('[AirplaneOwl02Commander] setFlyMode invalid mode ' + mode));
+    //     }
+    //     p.command = common.MavCmd.DO_SET_MODE;
+    //     p.targetSystem = 1;
+    //     p.targetComponent = 1;
+    //     return this.airplane.sendMsg(p);
+    // }
+
+    /**
+     * @param forward 1：上升 2：下降，3：前，4：后，5：左，6：右
+     * @param distance
+     * @param speed
+     */
+    move(forward: 1 | 2 | 3 | 4 | 5 | 6, distance: number, speed: number = 0) {
+        const p = new commonACFly.ExtDroneMoveCommand();
+        p.direction = 5;
+        p.distance = distance;
+        p.speed = speed;
+        p._param7 = getNowTimestampMsUintFloat();
+        p.targetSystem = 1;
+        p.targetComponent = 1;
+        return this.airplane.sendMsg(p);
+    }
+
+    up(distance: number, speed: number = 0) {
+        return this.move(1, distance, speed);
+    }
+
+    down(distance: number, speed: number = 0) {
+        return this.move(2, distance, speed);
+    }
+
+    forward(distance: number, speed: number = 0) {
+        return this.move(3, distance, speed);
+    }
+
+    back(distance: number, speed: number = 0) {
+        return this.move(4, distance, speed);
+    }
+
+    left(distance: number, speed: number = 0) {
+        return this.move(5, distance, speed);
+    }
+
+    right(distance: number, speed: number = 0) {
+        return this.move(6, distance, speed);
     }
 
     /**
-     * @param mode
-     * @param subMode
+     * @param forward 1：逆时针 2：顺时针
+     * @param degrees  转动角度（单位 度，min值0，max值360）
      */
-    setFlyMode(mode: FlyModeEnum, subMode: FlyModeAutoEnum | FlyModeStableEnum) {
-        const p = new common.NavLandCommand();
-        p._param1 = 1;
-        switch (mode) {
-            case FlyModeEnum.FLY_MODE_HOLD:
-                p._param2 = 2;
-                break;
-            case FlyModeEnum.FLY_MODE_POSITION:
-                p._param2 = 3;
-                switch (subMode) {
-                    case FlyModeStableEnum.FLY_MODE_STABLE_NORMAL:
-                        p._param3 = 0;
-                        break;
-                    case FlyModeStableEnum.FLY_MODE_STABLE_OBSTACLE_AVOIDANCE:
-                        p._param3 = 2;
-                        break;
-                    case FlyModeStableEnum.INVALID:
-                    default:
-                        console.warn('[AirplaneOwl02Commander] setFlyMode invalid subMode for position mode', subMode);
-                        return Promise.reject(new Error('[AirplaneOwl02Commander] setFlyMode invalid subMode for position mode ' + subMode));
-                }
-                break;
-            case FlyModeEnum.FLY_MODE_AUTO:
-                p._param2 = 4;
-                switch (subMode) {
-                    case FlyModeAutoEnum.FLY_MODE_AUTO_FOLLOW:
-                        p._param3 = 3;
-                        break;
-                    case FlyModeAutoEnum.FLY_MODE_AUTO_MISSION:
-                        p._param3 = 4;
-                        break;
-                    case FlyModeAutoEnum.FLY_MODE_AUTO_RTL:
-                        p._param3 = 5;
-                        break;
-                    case FlyModeAutoEnum.FLY_MODE_AUTO_LAND:
-                        p._param3 = 6;
-                        break;
-                    case FlyModeAutoEnum.FLY_MODE_AUTO_TAKEOFF:
-                    // (不可设置，只反馈)
-                    // p._param3 = 2;
-                    // break;
-                    case FlyModeAutoEnum.INVALID:
-                    default:
-                        console.warn('[AirplaneOwl02Commander] setFlyMode invalid subMode for auto mode', subMode);
-                        return Promise.reject(new Error('[AirplaneOwl02Commander] setFlyMode invalid subMode for auto mode ' + subMode));
-                }
-                break;
-            case FlyModeEnum.FLY_MODE_OFF_BOARD:
-            case FlyModeEnum.INVALID:
-            default:
-                console.warn('[AirplaneOwl02Commander] setFlyMode invalid mode', mode);
-                return Promise.reject(new Error('[AirplaneOwl02Commander] setFlyMode invalid mode ' + mode));
-        }
-        p.command = common.MavCmd.DO_SET_MODE;
+    rotate(forward: 1 | 2, degrees: number) {
+        // mod(degrees,360)
+        degrees = mathMod(degrees, 360);
+        const p = new commonACFly.ExtDroneCircleCommand();
+        p.direction = forward;
+        p.degrees = degrees;
+        p._param7 = getNowTimestampMsUintFloat();
         p.targetSystem = 1;
         p.targetComponent = 1;
         return this.airplane.sendMsg(p);
     }
 
-    set_home_position(lat: number, lon: number, alt: number) {
-        const p = new common.SetHomePosition();
-        p.latitude = lat;
-        p.longitude = lon;
-        p.altitude = alt;
+    cw(degrees: number) {
+        return this.rotate(2, degrees);
+    }
+
+    ccw(degrees: number) {
+        return this.rotate(1, degrees);
+    }
+
+    setSpeed(speed: number) {
+        const p = new commonACFly.ExtDroneChangeSpeedCommand();
+        p.speed = speed;
+        p._param7 = getNowTimestampMsUintFloat();
         p.targetSystem = 1;
+        p.targetComponent = 1;
+        return this.airplane.sendMsg(p);
+    }
+
+    light(r: number, g: number, b: number) {
+        const p = new commonACFly.ExtDroneLightRgbCommand();
+        p.r = r;
+        p.g = g;
+        p.b = b;
+        p.breathe = 0;
+        p.rainbow = 0;
+        p._param7 = getNowTimestampMsUintFloat();
+        p.targetSystem = 1;
+        p.targetComponent = 1;
+        return this.airplane.sendMsg(p);
+    }
+
+    rainbow(r: number, g: number, b: number) {
+        const p = new commonACFly.ExtDroneLightRgbCommand();
+        p.r = r;
+        p.g = g;
+        p.b = b;
+        p.breathe = 0;
+        p.rainbow = 1;
+        p._param7 = getNowTimestampMsUintFloat();
+        p.targetSystem = 1;
+        p.targetComponent = 1;
+        return this.airplane.sendMsg(p);
+    }
+
+    breathe(r: number, g: number, b: number) {
+        const p = new commonACFly.ExtDroneLightRgbCommand();
+        p.r = r;
+        p.g = g;
+        p.b = b;
+        p.breathe = 1;
+        p.rainbow = 0;
+        p._param7 = getNowTimestampMsUintFloat();
+        p.targetSystem = 1;
+        p.targetComponent = 1;
         return this.airplane.sendMsg(p);
     }
 
