@@ -12,6 +12,7 @@ import {MavStateCollector} from "./MavStateCollector";
 import {UtilTimer} from "./utils/UtilTimer";
 import {MSG_ID_MAGIC_NUMBER} from "./Owl02Lib/magic-numbers";
 import * as commonACFly from "./Owl02Lib/commonACFly";
+import {getNowTimestampMsUintFloat} from "./AirplaneTimestamp";
 
 // 替换 COM3 为你的串口路径，或从环境变量设置，可以使用 UsbTreeView 或从设备管理中查看当前所有串口
 const comPortString = process.env.COM_PORT_STRING || 'COM10';
@@ -307,19 +308,20 @@ port.on('open', async () => {
     //     await sleep(50);
     // }
 
-    // console.log('====== ExtDroneMoveCommand');
-    // const move = new commonACFly.ExtDroneMoveCommand();
-    // move.direction = 1;
-    // move.distance = 100;
-    // await m.sendMsg(move, 2);
+    console.log('====== ExtDroneMoveCommand');
+    const move = new commonACFly.ExtDroneMoveCommand();
+    move.direction = 1;
+    move.distance = 100;
+    move._param7 = getNowTimestampMsUintFloat();
+    await m.sendMsg(move, 2);
 
-    console.log('====== ExtDroneGotoCmdCommand');
-    const go = new commonACFly.ExtDroneGotoCmdCommand();
-    go.target_x = 100;
-    go.target_y = 100;
-    go.target_z = 100;
-    go._param7 = 0;     // timestamp
-    await m.sendMsg(go, 2);
+    // console.log('====== ExtDroneGotoCmdCommand');
+    // const go = new commonACFly.ExtDroneGotoCmdCommand();
+    // go.target_x = 100;
+    // go.target_y = 100;
+    // go.target_z = 100;
+    // go._param7 = getNowTimestampMsUintFloat();     // timestamp
+    // await m.sendMsg(go, 2);
 
     // console.log('====== ExtDroneTakeoffCommand');
     // const takeoff = new commonACFly.ExtDroneTakeoffCommand();
