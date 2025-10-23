@@ -23992,8 +23992,6 @@ export class HygrometerSensor extends MavLinkData {
   humidity: uint16_t
 }
 
-import { CommandLong } from './common'
-
 /**
  * request vehicle to send WGA code.
  */
