@@ -6,10 +6,12 @@ import {
     MavLinkPacketSplitter,
     MavLinkProtocol,
 } from "node-mavlink";
-import {Duplex, PassThrough, Transform, TransformCallback, Stream, Writable} from "stream";
+import {Duplex, PassThrough, Transform, TransformCallback, Writable} from "stream";
 import {
     CustomProtocolPackage,
-    CustomProtocolTransformFromSerialPort, CustomProtocolTransformToSerialPort,
+    CustomProtocolTransformFromSerialPort,
+    CustomProtocolTransformToSerialPort,
+    ProtocolMode,
 } from "./CustomProtocolTransform";
 import {filter, map, Observable, Subject} from 'rxjs';
 
@@ -293,6 +295,7 @@ export class CustomProtocolTransformManager {
                 {
                     deviceId: targetId,
                     protocolCode: 0,
+                    protocolMode: ProtocolMode.CommandMsg,
                     payload: packBuf,
                 } satisfies CustomProtocolPackage,
                 (err: any) => {

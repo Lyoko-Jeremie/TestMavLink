@@ -1,11 +1,27 @@
 import {Transform, TransformCallback} from 'stream';
 import {assert} from 'tsafe';
 
+//      协议识别码包含
+//      COMMAND_MSG(0)、     // MavLink数据传输
+//      SETADDR_PAIR(32)、
+//      SETADDR_PAIR_ACK(64)、
+//      SETADDR_PAIR_REQUEST(96)、
+//      SETADDR_PAIR_INFO(128)、
+export enum ProtocolMode {
+    CommandMsg = 0,
+    SetAddrPair = 32,
+    SetAddrPairAck = 64,
+    SetAddrPairRequest = 96,
+    SetAddrPairInfo = 128,
+
+    Unknown = 256,
+}
 
 export interface CustomProtocolPackage {
     payload: Uint8Array;
     deviceId: number;
     protocolCode: number;
+    protocolMode: ProtocolMode;
 }
 
 
@@ -31,7 +47,7 @@ export class CustomProtocolTransformToSerialPort extends Transform {
         //      SETADDR_PAIR(32)、
         //      SETADDR_PAIR_ACK(64)、
         //      SETADDR_PAIR_REQUEST(96)、
-        //      SETADDR_PAIR_REQUEST_ACK(128)、
+        //      SETADDR_PAIR_INFO(128)、
         //
         //
         //      当协议识别码为 COMMAND_MSG 时：
@@ -39,13 +55,14 @@ export class CustomProtocolTransformToSerialPort extends Transform {
         //      当协议识别码为 SETADDR_PAIR 时： payload 为 MAVLINK_MSG_ID_ONE_TO_MORE_ADDR_XINGUANGFEI=801 原始包字节
         //      当协议识别码为 SETADDR_PAIR_ACK 时： payload 为 uint8_t ack (0:失败，1:成功)
         //      当协议识别码为 SETADDR_PAIR_REQUEST 时： payload 为 空， 0字节长。
-        //      当协议识别码为 SETADDR_PAIR_REQUEST_ACK 时： payload 中为读取到的地址数据，结构体如下
+        //      当协议识别码为 SETADDR_PAIR_INFO 时： payload 中为读取到的地址数据，结构体如下
         //
         //
         const chunk = pack.payload;
         this.debug && console.log('[To SP] chunk', chunk);
         this.debug && console.log('[To SP] chunk', new Uint8Array(chunk));
-        const data = Buffer.from([0xAA, 0xBB, (pack.protocolCode & 0xF0) | (pack.deviceId & 0x0F), chunk.length, ...chunk, 0, 0xCC]); // 0xCC is the frame tail
+        const idField = ((pack.protocolCode & 0xF0) | (pack.deviceId & 0x0F)) & 0xFF;
+        const data = Buffer.from([0xAA, 0xBB, idField, chunk.length, ...chunk, 0, 0xCC]); // 0xCC is the frame tail
         const checksum = data.subarray(0, -2).reduce((acc, byte) => acc + byte, 0) & 0xFF; // simple checksum
         data[data.length - 2] = checksum; // set the checksum byte
         this.debug && console.log('[To SP] data', data);
@@ -81,7 +98,7 @@ function detectFirstPackFromUint8Array(debug: boolean, buffer: Uint8Array): {
     //      SETADDR_PAIR(32)、
     //      SETADDR_PAIR_ACK(64)、
     //      SETADDR_PAIR_REQUEST(96)、
-    //      SETADDR_PAIR_REQUEST_ACK(128)、
+    //      SETADDR_PAIR_INFO(128)、
     //
     //
     //      当协议识别码为 COMMAND_MSG 时：
@@ -89,7 +106,7 @@ function detectFirstPackFromUint8Array(debug: boolean, buffer: Uint8Array): {
     //      当协议识别码为 SETADDR_PAIR 时： payload 为 MAVLINK_MSG_ID_ONE_TO_MORE_ADDR_XINGUANGFEI=801 原始包字节
     //      当协议识别码为 SETADDR_PAIR_ACK 时： payload 为 uint8_t ack (0:失败，1:成功)
     //      当协议识别码为 SETADDR_PAIR_REQUEST 时： payload 为 空， 0字节长。
-    //      当协议识别码为 SETADDR_PAIR_REQUEST_ACK 时： payload 中为读取到的地址数据，结构体如下
+    //      当协议识别码为 SETADDR_PAIR_INFO 时： payload 中为读取到的地址数据，结构体如下
     //
     //
 
@@ -205,7 +222,7 @@ export class CustomProtocolTransformFromSerialPort extends Transform {
         //      SETADDR_PAIR(32)、
         //      SETADDR_PAIR_ACK(64)、
         //      SETADDR_PAIR_REQUEST(96)、
-        //      SETADDR_PAIR_REQUEST_ACK(128)、
+        //      SETADDR_PAIR_INFO(128)、
         //
         //
         //      当协议识别码为 COMMAND_MSG 时：
@@ -213,7 +230,7 @@ export class CustomProtocolTransformFromSerialPort extends Transform {
         //      当协议识别码为 SETADDR_PAIR 时： payload 为 MAVLINK_MSG_ID_ONE_TO_MORE_ADDR_XINGUANGFEI=801 原始包字节
         //      当协议识别码为 SETADDR_PAIR_ACK 时： payload 为 uint8_t ack (0:失败，1:成功)
         //      当协议识别码为 SETADDR_PAIR_REQUEST 时： payload 为 空， 0字节长。
-        //      当协议识别码为 SETADDR_PAIR_REQUEST_ACK 时： payload 中为读取到的地址数据，结构体如下
+        //      当协议识别码为 SETADDR_PAIR_INFO 时： payload 中为读取到的地址数据，结构体如下
         //
         //
         this.debug && console.log('[From SP] Received chunk:', chunk);
@@ -242,10 +259,17 @@ export class CustomProtocolTransformFromSerialPort extends Transform {
             return callback();
         }
 
+        // 低4位为设备id号
+        const deviceId = detectedFrame.idField & 0x0F;
+        // 高4位为协议识别码
+        const protocolCode = detectedFrame.idField & 0xF0;
+        const protocolMode = Object.values(ProtocolMode).includes(protocolCode) ? protocolCode as ProtocolMode : ProtocolMode.Unknown;
+
         const rData: CustomProtocolPackage = {
             payload: new Uint8Array(detectedFrame.payloadSlice.length),
-            deviceId: detectedFrame.idField & 0x0F, // 低4位为设备id号
-            protocolCode: (detectedFrame.idField & 0xF0) >> 4, // 高4位为协议识别码
+            deviceId: deviceId,
+            protocolCode: protocolCode,
+            protocolMode: protocolMode,
         };
         rData.payload.set(detectedFrame.payloadSlice, 0);
         this.debug && console.log('[From SP] rData', rData);
@@ -297,11 +321,17 @@ export class CustomProtocolTransformFromSerialPort extends Transform {
                         return callback();
                     }
 
-                    // we have a complete frame, emit it
+                    // 低4位为设备id号
+                    const deviceId = detectedFrame.idField & 0x0F;
+                    // 高4位为协议识别码
+                    const protocolCode = detectedFrame.idField & 0xF0;
+                    const protocolMode = Object.values(ProtocolMode).includes(protocolCode) ? protocolCode as ProtocolMode : ProtocolMode.Unknown;
+
                     const rData: CustomProtocolPackage = {
                         payload: new Uint8Array(detectedFrame.payloadSlice.length),
-                        deviceId: detectedFrame.idField & 0x0F, // 低4位为设备id号
-                        protocolCode: detectedFrame.idField & 0xF0, // 高4位为协议识别码
+                        deviceId: deviceId,
+                        protocolCode: protocolCode,
+                        protocolMode: protocolMode,
                     };
                     rData.payload.set(detectedFrame.payloadSlice, 0);
                     this.debug && console.log('[From SP] Detected remaining frame:', rData);
