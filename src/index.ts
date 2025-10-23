@@ -318,7 +318,13 @@ port.on('open', async () => {
     go.target_x = 100;
     go.target_y = 100;
     go.target_z = 100;
+    go._param7 = 0;     // timestamp
     await m.sendMsg(go, 2);
+
+    // console.log('====== ExtDroneTakeoffCommand');
+    // const takeoff = new commonACFly.ExtDroneTakeoffCommand();
+    // takeoff.height = 100;
+    // await m.sendMsg(takeoff, 2);
 
     console.log('====== sendEnd');
 });
