@@ -210,16 +210,21 @@ export class CustomProtocolTransformManager {
     private onPacket(pack: CustomProtocolPackage): void {
         this.debug && console.log('[CPT] Received a pack:', pack);
 
+        if (pack.protocolCode !== 0) {
+            // not mavlink protocol
+            return;
+        }
+
         // 检查是否有对应的 mavLinkDecodeStream
-        let mavLinkDecodeStream = this.mavLinkDecodeStreamTable.get(pack.id);
+        let mavLinkDecodeStream = this.mavLinkDecodeStreamTable.get(pack.deviceId);
         if (!mavLinkDecodeStream) {
             mavLinkDecodeStream = new MavLinkDecodeStream(this.REGISTRY);
-            this.mavLinkDecodeStreamTable.set(pack.id, mavLinkDecodeStream);
+            this.mavLinkDecodeStreamTable.set(pack.deviceId, mavLinkDecodeStream);
             mavLinkDecodeStream.observableData.pipe(map(T => {
-                return {id: pack.id, data: T};
+                return {id: pack.deviceId, data: T};
             })).subscribe(this.mavLinkAllDataSubject);
             mavLinkDecodeStream.observablePackAndData.pipe(map(T => {
-                return {id: pack.id, packAndData: T};
+                return {id: pack.deviceId, packAndData: T};
             })).subscribe(this.mavLinkAllPackAndDataSubject);
         }
 
@@ -286,7 +291,8 @@ export class CustomProtocolTransformManager {
             //     });
             this.customProtocolWriteStream.write(
                 {
-                    id: targetId,
+                    deviceId: targetId,
+                    protocolCode: 0,
                     payload: packBuf,
                 } satisfies CustomProtocolPackage,
                 (err: any) => {

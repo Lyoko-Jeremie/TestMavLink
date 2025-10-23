@@ -4,7 +4,8 @@ import {assert} from 'tsafe';
 
 export interface CustomProtocolPackage {
     payload: Uint8Array;
-    id: number;
+    deviceId: number;
+    protocolCode: number;
 }
 
 
@@ -20,16 +21,31 @@ export class CustomProtocolTransformToSerialPort extends Transform {
     }
 
     _transform(pack: CustomProtocolPackage, encoding: BufferEncoding, callback: TransformCallback): void {
-        // 帧头1	帧头2	ID	                    数据长度	    PLAYLOAD(data)	    uint8_t校验和	帧尾
-        // 0xAA	0xBB	0-15（用于判断设备号） 	max值（58）	max值（58个字节）		checksum        0xCC
+        // 封装包
+        // 帧头1	帧头2	ID	                            数据长度	    payload(data)	    uint8_t校验和	帧尾
+        // 0xAA	0xBB	协议识别码+0-15（用于判断设备号） 	max值（58）	max值（58个字节）		checksum        0xCC
         //
-        // 备注：id为0-15个天空端的设备ID
-        //       playload为天空端设备回传的信息或者地面站发送的cmd，地面站与天空端之间采用mavlink数据传输。先将基本数据打包成mavlink，打包后的mavlink数据放到playload
+        // 备注：id为 0-15个天空端的设备ID + 协议识别码(以高位0xF0区域来表示)
+        //      协议识别码包含
+        //      COMMAND_MSG(0)、
+        //      SETADDR_PAIR(32)、
+        //      SETADDR_PAIR_ACK(64)、
+        //      SETADDR_PAIR_REQUEST(96)、
+        //      SETADDR_PAIR_REQUEST_ACK(128)、
+        //
+        //
+        //      当协议识别码为 COMMAND_MSG 时：
+        //      payload 为天空端设备回传的信息或者地面站发送的cmd，地面站与天空端之间采用mavlink数据传输。先将基本数据打包成mavlink，打包后的mavlink数据放到payload
+        //      当协议识别码为 SETADDR_PAIR 时： payload 为 MAVLINK_MSG_ID_ONE_TO_MORE_ADDR_XINGUANGFEI=801 原始包字节
+        //      当协议识别码为 SETADDR_PAIR_ACK 时： payload 为 uint8_t ack (0:失败，1:成功)
+        //      当协议识别码为 SETADDR_PAIR_REQUEST 时： payload 为 空， 0字节长。
+        //      当协议识别码为 SETADDR_PAIR_REQUEST_ACK 时： payload 中为读取到的地址数据，结构体如下
+        //
         //
         const chunk = pack.payload;
         this.debug && console.log('[To SP] chunk', chunk);
         this.debug && console.log('[To SP] chunk', new Uint8Array(chunk));
-        const data = Buffer.from([0xAA, 0xBB, pack.id, chunk.length, ...chunk, 0, 0xCC]); // 0xCC is the frame tail
+        const data = Buffer.from([0xAA, 0xBB, (pack.protocolCode & 0xF0) | (pack.deviceId & 0x0F), chunk.length, ...chunk, 0, 0xCC]); // 0xCC is the frame tail
         const checksum = data.subarray(0, -2).reduce((acc, byte) => acc + byte, 0) & 0xFF; // simple checksum
         data[data.length - 2] = checksum; // set the checksum byte
         this.debug && console.log('[To SP] data', data);
@@ -45,7 +61,7 @@ type DetectFirstPackFromUint8ArrayReturnType = {
     frameSize: number,
     checksum: number,
     calculatedChecksum: number,
-    id: number,
+    idField: number,
     payloadSlice: Uint8Array,
 }
 
@@ -55,12 +71,28 @@ function detectFirstPackFromUint8Array(debug: boolean, buffer: Uint8Array): {
         skipEndIndex: number,
     },
 } | undefined {
-    // 帧头1	帧头2	ID	                    数据长度	    PLAYLOAD(data)	    uint8_t校验和	帧尾
-    // 0xAA	0xBB	0-15（用于判断设备号） 	max值（80）	max值（80个字节）		checksum        0xCC
+    // 封装包
+    // 帧头1	帧头2	ID	                            数据长度	    payload(data)	    uint8_t校验和	帧尾
+    // 0xAA	0xBB	协议识别码+0-15（用于判断设备号） 	max值（58）	max值（58个字节）		checksum        0xCC
     //
-    // 备注：id为0-15个天空端的设备ID
-    //       playload为天空端设备回传的信息或者地面站发送的cmd，地面站与天空端之间采用mavlink数据传输。先将基本数据打包成mavlink，打包后的mavlink数据放到playload
+    // 备注：id为 0-15个天空端的设备ID + 协议识别码(以高位0xF0区域来表示)
+    //      协议识别码包含
+    //      COMMAND_MSG(0)、
+    //      SETADDR_PAIR(32)、
+    //      SETADDR_PAIR_ACK(64)、
+    //      SETADDR_PAIR_REQUEST(96)、
+    //      SETADDR_PAIR_REQUEST_ACK(128)、
     //
+    //
+    //      当协议识别码为 COMMAND_MSG 时：
+    //      payload 为天空端设备回传的信息或者地面站发送的cmd，地面站与天空端之间采用mavlink数据传输。先将基本数据打包成mavlink，打包后的mavlink数据放到payload
+    //      当协议识别码为 SETADDR_PAIR 时： payload 为 MAVLINK_MSG_ID_ONE_TO_MORE_ADDR_XINGUANGFEI=801 原始包字节
+    //      当协议识别码为 SETADDR_PAIR_ACK 时： payload 为 uint8_t ack (0:失败，1:成功)
+    //      当协议识别码为 SETADDR_PAIR_REQUEST 时： payload 为 空， 0字节长。
+    //      当协议识别码为 SETADDR_PAIR_REQUEST_ACK 时： payload 中为读取到的地址数据，结构体如下
+    //
+    //
+
 
     // find the start of the frame
     let startIndex = -1;
@@ -127,7 +159,7 @@ function detectFirstPackFromUint8Array(debug: boolean, buffer: Uint8Array): {
         return undefined;
     }
 
-    const id = frame[2]; // ID is the 3rd byte in the frame
+    const idField = frame[2]; // ID is the 3rd byte in the frame
 
     // extract the payload
     const payload = frame.subarray(4, endIndex - 2); // skip header (2 bytes), ID (1 byte), length (1 byte)
@@ -142,7 +174,7 @@ function detectFirstPackFromUint8Array(debug: boolean, buffer: Uint8Array): {
             frameSize,
             checksum,
             calculatedChecksum,
-            id,
+            idField: idField,
             payloadSlice: payload,
         },
     };
@@ -163,11 +195,26 @@ export class CustomProtocolTransformFromSerialPort extends Transform {
     private buffer: Uint8Array = new Uint8Array();
 
     _transform(chunk: Buffer, encoding: BufferEncoding, callback: TransformCallback): void {
-        // 帧头1	帧头2	ID	                    数据长度	    PLAYLOAD(data)	    uint8_t校验和	帧尾
-        // 0xAA	0xBB	0-15（用于判断设备号） 	max值（80）	max值（80个字节）		checksum        0xCC
+        // 封装包
+        // 帧头1	帧头2	ID	                            数据长度	    payload(data)	    uint8_t校验和	帧尾
+        // 0xAA	0xBB	协议识别码+0-15（用于判断设备号） 	max值（58）	max值（58个字节）		checksum        0xCC
         //
-        // 备注：id为0-15个天空端的设备ID
-        //       playload为天空端设备回传的信息或者地面站发送的cmd，地面站与天空端之间采用mavlink数据传输。先将基本数据打包成mavlink，打包后的mavlink数据放到playload
+        // 备注：id为 0-15个天空端的设备ID + 协议识别码(以高位0xF0区域来表示)
+        //      协议识别码包含
+        //      COMMAND_MSG(0)、
+        //      SETADDR_PAIR(32)、
+        //      SETADDR_PAIR_ACK(64)、
+        //      SETADDR_PAIR_REQUEST(96)、
+        //      SETADDR_PAIR_REQUEST_ACK(128)、
+        //
+        //
+        //      当协议识别码为 COMMAND_MSG 时：
+        //      payload 为天空端设备回传的信息或者地面站发送的cmd，地面站与天空端之间采用mavlink数据传输。先将基本数据打包成mavlink，打包后的mavlink数据放到payload
+        //      当协议识别码为 SETADDR_PAIR 时： payload 为 MAVLINK_MSG_ID_ONE_TO_MORE_ADDR_XINGUANGFEI=801 原始包字节
+        //      当协议识别码为 SETADDR_PAIR_ACK 时： payload 为 uint8_t ack (0:失败，1:成功)
+        //      当协议识别码为 SETADDR_PAIR_REQUEST 时： payload 为 空， 0字节长。
+        //      当协议识别码为 SETADDR_PAIR_REQUEST_ACK 时： payload 中为读取到的地址数据，结构体如下
+        //
         //
         this.debug && console.log('[From SP] Received chunk:', chunk);
 
@@ -197,7 +244,8 @@ export class CustomProtocolTransformFromSerialPort extends Transform {
 
         const rData: CustomProtocolPackage = {
             payload: new Uint8Array(detectedFrame.payloadSlice.length),
-            id: detectedFrame.id,
+            deviceId: detectedFrame.idField & 0x0F, // 低4位为设备id号
+            protocolCode: (detectedFrame.idField & 0xF0) >> 4, // 高4位为协议识别码
         };
         rData.payload.set(detectedFrame.payloadSlice, 0);
         this.debug && console.log('[From SP] rData', rData);
@@ -252,7 +300,8 @@ export class CustomProtocolTransformFromSerialPort extends Transform {
                     // we have a complete frame, emit it
                     const rData: CustomProtocolPackage = {
                         payload: new Uint8Array(detectedFrame.payloadSlice.length),
-                        id: detectedFrame.id,
+                        deviceId: detectedFrame.idField & 0x0F, // 低4位为设备id号
+                        protocolCode: detectedFrame.idField & 0xF0, // 高4位为协议识别码
                     };
                     rData.payload.set(detectedFrame.payloadSlice, 0);
                     this.debug && console.log('[From SP] Detected remaining frame:', rData);
