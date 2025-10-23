@@ -2,9 +2,6 @@ import moment from "moment";
 import {
     AirplaneOwl02Interface,
     AirplaneOwl02State,
-    // FlyModeAutoEnum,
-    // FlyModeEnum,
-    FlyModeStableEnum
 } from "./AirplaneOwl02Interface";
 import {AirplaneManagerOwl02Interface} from "./AirplaneManagerOwl02Interface";
 import {common, MavLinkData, MavLinkPacket, minimal, uint8_t} from "node-mavlink";
@@ -67,7 +64,6 @@ export class AirplaneOwl02 implements AirplaneOwl02Interface {
             [common.AutopilotVersion.MSG_ID]: this.parseAutopilotVersion.bind(this),
             [common.StatusText.MSG_ID]: this.parseStatusText.bind(this),
             [common.CommandAck.MSG_ID]: this.parseAck.bind(this),
-            [common.GlobalPositionInt.MSG_ID]: this.parseGpsPos.bind(this),
             [commonACFly.BatteryStatusAcfly.MSG_ID]: this.parseBatteryStatusAcfly.bind(this),
         };
         this.cachedPacketIds = new Set<number>([
@@ -116,27 +112,11 @@ export class AirplaneOwl02 implements AirplaneOwl02Interface {
 
     public async sendHeartbeat() {
         const commandHeartbeat = new minimal.Heartbeat();
-        // commandHeartbeat.type = minimal.MavType.GCS;
-        // commandHeartbeat.autopilot = minimal.MavAutopilot.INVALID;
+        commandHeartbeat.type = minimal.MavType.GCS;
+        commandHeartbeat.autopilot = minimal.MavAutopilot.INVALID;
         // (base_mode&0x80) ==0x80 飞机已解锁，
         // (base_mode&0x80) !=0x80 飞机未解锁.
-        // commandHeartbeat.baseMode = minimal.MavModeFlag.CUSTOM_MODE_ENABLED;
-        // custom_mode的第3个字节代表飞机的主模式，定义如下
-        // 定高模式（2）
-        // 定点模式（3）
-        // 自动模式（4）
-        // custom_mode的第4个字节代表飞机的细分模式，定义如下
-        // 自动模式细分：
-        // 	自动起飞模式（2）
-        // 	自动跟踪模式（3）
-        // 	自动任务模式（4）
-        // 	自动返航模式（5）
-        // 	自动降落模式（6）
-        // 定点模式细分：
-        // 	普通定点模式（0）
-        // 	定点避障模式（2）
-        // commandHeartbeat.customMode = 0;
-        // commandHeartbeat.systemStatus = minimal.MavState.ACTIVE;
+        commandHeartbeat.baseMode = minimal.MavModeFlag.CUSTOM_MODE_ENABLED;
         await this.sendMsg(commandHeartbeat);
     }
 
@@ -153,39 +133,6 @@ export class AirplaneOwl02 implements AirplaneOwl02Interface {
     protected parseHeartbeat(data: PackAndDataType) {
         const p = data.data.mavLinkData as minimal.Heartbeat;
         this.state.isArmed = (p.baseMode & 0x80) === 0x80;
-        // TODO flyMode
-        // this.state.flyMode = ListSwitch((p.customMode >>> (8 * 3)) & 0xFF, {
-        //     2: FlyModeEnum.FLY_MODE_HOLD,
-        //     3: FlyModeEnum.FLY_MODE_POSITION,
-        //     4: FlyModeEnum.FLY_MODE_AUTO,
-        // }, FlyModeEnum.INVALID);
-        // this.state.flyMode = {
-        //     2: FlyModeEnum.FLY_MODE_HOLD,
-        //     3: FlyModeEnum.FLY_MODE_POSITION,
-        //     4: FlyModeEnum.FLY_MODE_AUTO,
-        // }[(p.customMode >>> (8 * 3)) & 0xFF] ?? FlyModeEnum.INVALID;
-        // switch (this.state.flyMode) {
-        //     case FlyModeEnum.FLY_MODE_AUTO:
-        //         this.state.flyModeAuto = ListSwitch((p.customMode >>> (8 * 4)) & 0xFF, {
-        //             2: FlyModeAutoEnum.FLY_MODE_AUTO_TAKEOFF,
-        //             3: FlyModeAutoEnum.FLY_MODE_AUTO_FOLLOW,
-        //             4: FlyModeAutoEnum.FLY_MODE_AUTO_MISSION,
-        //             5: FlyModeAutoEnum.FLY_MODE_AUTO_RTL,
-        //             6: FlyModeAutoEnum.FLY_MODE_AUTO_LAND,
-        //         }, FlyModeAutoEnum.INVALID);
-        //         this.state.flyModeStable = FlyModeStableEnum.INVALID;
-        //         break;
-        //     case FlyModeEnum.FLY_MODE_POSITION:
-        //         this.state.flyModeStable = ListSwitch((p.customMode >>> (8 * 4)) & 0xFF, {
-        //             0: FlyModeStableEnum.FLY_MODE_STABLE_NORMAL,
-        //             2: FlyModeStableEnum.FLY_MODE_STABLE_OBSTACLE_AVOIDANCE,
-        //         }, FlyModeStableEnum.INVALID);
-        //         this.state.flyModeAuto = FlyModeAutoEnum.INVALID;
-        //     case FlyModeEnum.INVALID:
-        //     default:
-        //         this.state.flyModeAuto = FlyModeAutoEnum.INVALID;
-        //         this.state.flyModeStable = FlyModeStableEnum.INVALID;
-        // }
     }
 
     protected parseLandState(data: PackAndDataType) {
@@ -205,21 +152,6 @@ export class AirplaneOwl02 implements AirplaneOwl02Interface {
 
     protected parseAutopilotVersion(data: PackAndDataType) {
         const p = data.data.mavLinkData as common.AutopilotVersion;
-        this.state.flightSwVersion = p.flightSwVersion;
-        this.state.flightSwVersionString = [
-            ((p.flightSwVersion >>> (8 * 2)) & 0xFF),
-            ((p.flightSwVersion >>> (8 * 1)) & 0xFF),
-            ((p.flightSwVersion >>> (8 * 0)) & 0xFF),
-        ].join('.');
-        this.state.boardVersion = p.boardVersion;
-        // 序列号计算如下:
-        // uint32_t UID0 = ((uint32_t*) uid2)[0];
-        // uint32_t UID 1 = ((uint32_t*) uid2)[1];
-        // uint32_t UID 2 = ((uint32_t*) uid2)[2];
-        // 再将UID0- UID2转成16进制, 拼接起来即可得到完整的序列号
-        this.state.SN = ((p.uid2[0] & 0xFFFFFFFF) >>> 0).toString(16).padStart(8, '0')
-            + ((p.uid2[1] & 0xFFFFFFFF) >>> 0).toString(16).padStart(8, '0')
-            + ((p.uid2[2] & 0xFFFFFFFF) >>> 0).toString(16).padStart(8, '0');
     }
 
     protected parseAck(data: PackAndDataType) {
@@ -229,16 +161,8 @@ export class AirplaneOwl02 implements AirplaneOwl02Interface {
         console.log('[AirplaneOwl02] CommandAck:', p);
         const cmdId = p.command;
         const isOk = p.result === 0;
+        const ackPackTimestamp = p.resultParam2;
         const progress = p.progress;
-    }
-
-    protected parseGpsPos(data: PackAndDataType) {
-        const p = data.data.mavLinkData as common.GlobalPositionInt;
-        this.state.gpsPosition.lat = p.lat / 1e7;
-        this.state.gpsPosition.lon = p.lon / 1e7;
-        this.state.gpsPosition.alt = p.alt / 1e4;
-        this.state.gpsPosition.relativeAlt = p.relativeAlt / 1e4;
-        this.state.gpsPosition.hdg = p.hdg;
     }
 
     protected parseBatteryStatusAcfly(data: PackAndDataType) {
@@ -421,70 +345,6 @@ export class AirplaneOwl02Commander {
         p.targetComponent = 1;
         return this.airplane.sendMsg(p);
     }
-
-    // /**
-    //  * TODO
-    //  * @param mode
-    //  * @param subMode
-    //  */
-    // setFlyMode(mode: FlyModeEnum, subMode: FlyModeAutoEnum | FlyModeStableEnum) {
-    //     const p = new common.NavLandCommand();
-    //     p._param1 = 1;
-    //     switch (mode) {
-    //         case FlyModeEnum.FLY_MODE_HOLD:
-    //             p._param2 = 2;
-    //             break;
-    //         case FlyModeEnum.FLY_MODE_POSITION:
-    //             p._param2 = 3;
-    //             switch (subMode) {
-    //                 case FlyModeStableEnum.FLY_MODE_STABLE_NORMAL:
-    //                     p._param3 = 0;
-    //                     break;
-    //                 case FlyModeStableEnum.FLY_MODE_STABLE_OBSTACLE_AVOIDANCE:
-    //                     p._param3 = 2;
-    //                     break;
-    //                 case FlyModeStableEnum.INVALID:
-    //                 default:
-    //                     console.warn('[AirplaneOwl02Commander] setFlyMode invalid subMode for position mode', subMode);
-    //                     return Promise.reject(new Error('[AirplaneOwl02Commander] setFlyMode invalid subMode for position mode ' + subMode));
-    //             }
-    //             break;
-    //         case FlyModeEnum.FLY_MODE_AUTO:
-    //             p._param2 = 4;
-    //             switch (subMode) {
-    //                 case FlyModeAutoEnum.FLY_MODE_AUTO_FOLLOW:
-    //                     p._param3 = 3;
-    //                     break;
-    //                 case FlyModeAutoEnum.FLY_MODE_AUTO_MISSION:
-    //                     p._param3 = 4;
-    //                     break;
-    //                 case FlyModeAutoEnum.FLY_MODE_AUTO_RTL:
-    //                     p._param3 = 5;
-    //                     break;
-    //                 case FlyModeAutoEnum.FLY_MODE_AUTO_LAND:
-    //                     p._param3 = 6;
-    //                     break;
-    //                 case FlyModeAutoEnum.FLY_MODE_AUTO_TAKEOFF:
-    //                 // (不可设置，只反馈)
-    //                 // p._param3 = 2;
-    //                 // break;
-    //                 case FlyModeAutoEnum.INVALID:
-    //                 default:
-    //                     console.warn('[AirplaneOwl02Commander] setFlyMode invalid subMode for auto mode', subMode);
-    //                     return Promise.reject(new Error('[AirplaneOwl02Commander] setFlyMode invalid subMode for auto mode ' + subMode));
-    //             }
-    //             break;
-    //         case FlyModeEnum.FLY_MODE_OFF_BOARD:
-    //         case FlyModeEnum.INVALID:
-    //         default:
-    //             console.warn('[AirplaneOwl02Commander] setFlyMode invalid mode', mode);
-    //             return Promise.reject(new Error('[AirplaneOwl02Commander] setFlyMode invalid mode ' + mode));
-    //     }
-    //     p.command = common.MavCmd.DO_SET_MODE;
-    //     p.targetSystem = 1;
-    //     p.targetComponent = 1;
-    //     return this.airplane.sendMsg(p);
-    // }
 
     /**
      * @param forward 1：上升 2：下降，3：前，4：后，5：左，6：右
