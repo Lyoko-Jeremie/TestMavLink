@@ -267,9 +267,10 @@ export class CustomProtocolTransformManager {
      * 发送 mavlink 消息
      * @param msg - mavlink 消息数据
      * @param targetId - 目标设备 ID，0xFF 表示广播
+     * @param protocolMode
      * @returns 是否发送成功
      */
-    public async sendMsg(msg: MavLinkData, targetId: number): Promise<number | undefined> {
+    public async sendMsg(msg: MavLinkData, targetId: number, protocolMode: ProtocolMode = ProtocolMode.CommandMsg): Promise<number | undefined> {
         if ((targetId & 0xFF) !== targetId) {
             console.error('[CPT] sendMsg invalid targetId :', targetId);
             return undefined;
@@ -295,7 +296,7 @@ export class CustomProtocolTransformManager {
                 {
                     deviceId: targetId,
                     protocolCode: 0,
-                    protocolMode: ProtocolMode.CommandMsg,
+                    protocolMode: protocolMode,
                     payload: packBuf,
                 } satisfies CustomProtocolPackage,
                 (err: any) => {
