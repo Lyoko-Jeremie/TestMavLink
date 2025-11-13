@@ -345,6 +345,7 @@ export class AirplaneOwl02Commander {
         p.direction = 5;
         p.distance = distance;
         p.speed = speed;
+        p.relative_or_absolute = 0;
         p._param7 = getNowTimestampMsUintFloat();
         p.targetSystem = 1;
         p.targetComponent = 1;
@@ -461,9 +462,18 @@ export class AirplaneOwl02Commander {
     /**
      * Set altitude - simplified version of goto
      * @param high altitude in cm
+     * @param speed
      */
-    high(high: number) {
-        return this.goto(0, 0, high, 1000, 0);
+    high(high: number, speed: number = 0) {
+        const p = new commonACFly.ExtDroneMoveCommand();
+        p.direction = 1;
+        p.distance = high;
+        p.speed = speed;
+        p.relative_or_absolute = 1;
+        p._param7 = getNowTimestampMsUintFloat();
+        p.targetSystem = 1;
+        p.targetComponent = 1;
+        return this.airplane.sendMsg(p);
     }
 
     /**
