@@ -2787,8 +2787,8 @@ export enum MavCmd {
    * xingangfei ext command move
    * @param1 direction (min: 0, max: 6) //front:03/behind:04/left:05/right:06/up:01/down:02
    * @param2 distance[cm] (min: 0, max: 1000) distance
-   * @param2 speed[cm/s] (min: 0, max: 200) speed
-   * @param4 Empty
+   * @param3 speed[cm/s] (min: 0, max: 200) speed
+   * @param4 relative_or_absolute (min: 0, max: 1) 0 relative high 1:absolute high
    * @param5 Empty
    * @param6 Empty
    * @param7 timestemp
@@ -2845,7 +2845,7 @@ export enum MavCmd {
 
   /**
    * xinguangfei ext set mode
-   * @param1 mode 1:normal 2:track line 3:follow
+   * @param1 mode 1:normal 2:track line 3:color square 4:specific tag
    * @param2 Empty
    * @param3 Empty
    * @param4 Empty
@@ -2880,6 +2880,18 @@ export enum MavCmd {
   'EXT_DRONE_GOTO_CMD'                             = 279,
 
   /**
+   * xinguangfei ext goto target loc
+   * @param1 cmd (min: 0, max: 1) 0:fllowline 1:lock apritag 2:find color block
+   * @param2 x Distance[m] (min: -1000, max: 1000) x Distance
+   * @param3 y Distance[m] (min: -1000, max: 1000) y Distance
+   * @param4 z Distance[m] (min: -200, max: 200) z Distance
+   * @param5 Empty
+   * @param6 Empty
+   * @param7 timestemp
+   */
+  'EXT_DRONE_OPEMMV_CMD'                           = 280,
+
+  /**
    * xinguangfei all drone turn
    * @param1 lockYaw (min: 0, max: 1) 1 lockyaw
    * @param2 Empty
@@ -2894,7 +2906,7 @@ export enum MavCmd {
   /**
    * xinguangfei
    * @param1 ROLL (min: 0, max: 1) ROLL
-   * @param2 Empty
+   * @param1 div (min: 0, max: 1) //front:03/behind:04/left:05/right:06/
    * @param3 Empty
    * @param4 Empty
    * @param5 Empty
@@ -2904,16 +2916,16 @@ export enum MavCmd {
   'EXT_DRONE_EXTRA_ACTIONS'                        = 282,
 
   /**
-   * xinguangfei ext goto target loc
-   * @param1 cmd (min: 0, max: 1) 0:fllowline 1:lock apritag
-   * @param2 Empty
+   * xinguangfei
+   * @param1 cmd (min: 0, max: 1) 1：hover
+   * @param3 Empty
    * @param3 Empty
    * @param4 Empty
    * @param5 Empty
    * @param6 Empty
    * @param7 timestemp
    */
-  'EXT_DRONE_OPEMMV_CMD'                           = 280,
+  'EXT_DRONE_HOVER'                                = 283,
 
   /**
    * xinguangfei ext set mode
@@ -28924,10 +28936,23 @@ export class ExtDroneMoveCommand extends CommandLong {
    * @max: 200
    */
   get speed() {
-    return this._param2
+    return this._param3
   }
   set speed(value: number) {
-    this._param2 = value
+    this._param3 = value
+  }
+
+  /**
+   * 0 relative high 1:absolute high
+   *
+   * @min: 0
+   * @max: 1
+   */
+  get relative_or_absolute() {
+    return this._param4
+  }
+  set relative_or_absolute(value: number) {
+    this._param4 = value
   }
 }
 
@@ -29138,7 +29163,7 @@ export class ExtDroneSetModeCommand extends CommandLong {
   }
 
   /**
-   * 1:normal 2:track line 3:follow
+   * 1:normal 2:track line 3:color square 4:specific tag
    */
   get mode() {
     return this._param1
@@ -29263,6 +29288,73 @@ export class ExtDroneGotoCmdCommand extends CommandLong {
 }
 
 /**
+ * xinguangfei ext goto target loc
+ */
+export class ExtDroneOpemmvCmdCommand extends CommandLong {
+  constructor(targetSystem = 1, targetComponent = 1) {
+    super()
+    this.command = MavCmd.EXT_DRONE_OPEMMV_CMD as number
+    this.targetSystem = targetSystem
+    this.targetComponent = targetComponent
+  }
+
+  /**
+   * 0:fllowline 1:lock apritag 2:find color block
+   *
+   * @min: 0
+   * @max: 1
+   */
+  get cmd() {
+    return this._param1
+  }
+  set cmd(value: number) {
+    this._param1 = value
+  }
+
+  /**
+   * x Distance
+   *
+   * @units m
+   * @min: -1000
+   * @max: 1000
+   */
+  get xDistance() {
+    return this._param2
+  }
+  set xDistance(value: number) {
+    this._param2 = value
+  }
+
+  /**
+   * y Distance
+   *
+   * @units m
+   * @min: -1000
+   * @max: 1000
+   */
+  get yDistance() {
+    return this._param3
+  }
+  set yDistance(value: number) {
+    this._param3 = value
+  }
+
+  /**
+   * z Distance
+   *
+   * @units m
+   * @min: -200
+   * @max: 200
+   */
+  get zDistance() {
+    return this._param4
+  }
+  set zDistance(value: number) {
+    this._param4 = value
+  }
+}
+
+/**
  * xinguangfei all drone turn
  */
 export class ExtAllDroneTurnCommand extends CommandLong {
@@ -29310,21 +29402,34 @@ export class ExtDroneExtraActionsCommand extends CommandLong {
   set roll(value: number) {
     this._param1 = value
   }
+
+  /**
+   * //front:03/behind:04/left:05/right:06/
+   *
+   * @min: 0
+   * @max: 1
+   */
+  get div() {
+    return this._param1
+  }
+  set div(value: number) {
+    this._param1 = value
+  }
 }
 
 /**
- * xinguangfei ext goto target loc
+ * xinguangfei
  */
-export class ExtDroneOpemmvCmdCommand extends CommandLong {
+export class ExtDroneHoverCommand extends CommandLong {
   constructor(targetSystem = 1, targetComponent = 1) {
     super()
-    this.command = MavCmd.EXT_DRONE_OPEMMV_CMD as number
+    this.command = MavCmd.EXT_DRONE_HOVER as number
     this.targetSystem = targetSystem
     this.targetComponent = targetComponent
   }
 
   /**
-   * 0:fllowline 1:lock apritag
+   * 1：hover
    *
    * @min: 0
    * @max: 1
@@ -33264,9 +33369,10 @@ export const COMMANDS: MavLinkCommandRegistry = {
   [MavCmd.EXT_DRONE_SET_MODE]: ExtDroneSetModeCommand,
   [MavCmd.EXT_DRONE_VERSION_DETECT_MODE_SET]: ExtDroneVersionDetectModeSetCommand,
   [MavCmd.EXT_DRONE_GOTO_CMD]: ExtDroneGotoCmdCommand,
+  [MavCmd.EXT_DRONE_OPEMMV_CMD]: ExtDroneOpemmvCmdCommand,
   [MavCmd.EXT_ALL_DRONE_TURN]: ExtAllDroneTurnCommand,
   [MavCmd.EXT_DRONE_EXTRA_ACTIONS]: ExtDroneExtraActionsCommand,
-  [MavCmd.EXT_DRONE_OPEMMV_CMD]: ExtDroneOpemmvCmdCommand,
+  [MavCmd.EXT_DRONE_HOVER]: ExtDroneHoverCommand,
   [MavCmd.EXT_DRONE_TOTAL]: ExtDroneTotalCommand,
   [MavCmd.ACTUATOR_TEST]: ActuatorTestCommand,
   [MavCmd.CONFIGURE_ACTUATOR]: ConfigureActuatorCommand,
