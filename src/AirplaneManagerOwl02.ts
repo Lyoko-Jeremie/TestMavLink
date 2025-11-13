@@ -4,6 +4,10 @@ import {AirplaneOwl02} from "./AirplaneOwl02";
 import {Subscription} from "rxjs";
 import {UtilTimer} from "./utils/UtilTimer";
 
+async function sleep(ms: number): Promise<void> {
+    return new Promise(resolve => setTimeout(resolve, ms));
+}
+
 export class AirplaneManagerOwl02 implements AirplaneManagerOwl02Interface {
     protected airplane: Map<number, AirplaneOwl02> = new Map<number, AirplaneOwl02>();
     protected uSubscription?: Subscription;
@@ -16,6 +20,7 @@ export class AirplaneManagerOwl02 implements AirplaneManagerOwl02Interface {
             async () => {
                 for (const [id, a] of this.airplane) {
                     await a.sendHeartbeat();
+                    await sleep(1);
                 }
             },
             console,
