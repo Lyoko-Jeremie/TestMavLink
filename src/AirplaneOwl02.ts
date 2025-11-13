@@ -447,4 +447,138 @@ export class AirplaneOwl02Commander {
         return this.airplane.sendMsg(p);
     }
 
+    /**
+     * Return to launch - RTL command
+     */
+    returnToLaunch() {
+        const p = new commonACFly.NavReturnToLaunchCommand();
+        p._param7 = getNowTimestampMsUintFloat();
+        p.targetSystem = 1;
+        p.targetComponent = 1;
+        return this.airplane.sendMsg(p);
+    }
+
+    /**
+     * Set altitude - simplified version of goto
+     * @param high altitude in cm
+     */
+    high(high: number) {
+        return this.goto(0, 0, high, 1000, 0);
+    }
+
+    /**
+     * Set flight mode
+     * @param mode 1:normal 2:track line 3:follow
+     */
+    setMode(mode: 1 | 2 | 3) {
+        const p = new commonACFly.ExtDroneSetModeCommand();
+        p.mode = mode;
+        p._param7 = getNowTimestampMsUintFloat();
+        p.targetSystem = 1;
+        p.targetComponent = 1;
+        return this.airplane.sendMsg(p);
+    }
+
+    /**
+     * Set color detection mode
+     * @param l_min L channel min value
+     * @param l_max L channel max value
+     * @param a_min A channel min value
+     * @param a_max A channel max value
+     * @param b_min B channel min value
+     * @param b_max B channel max value
+     */
+    setColorDetectMode(l_min: number, l_max: number, a_min: number, a_max: number, b_min: number, b_max: number) {
+        const p = new commonACFly.ExtDroneVersionDetectModeSetCommand();
+        p.l_l = l_min;
+        p.l_h = l_max;
+        p.a_l = a_min;
+        p.a_h = a_max;
+        p.b_l = b_min;
+        p.b_h = b_max;
+        p._param7 = getNowTimestampMsUintFloat();
+        p.targetSystem = 1;
+        p.targetComponent = 1;
+        return this.airplane.sendMsg(p);
+    }
+
+    /**
+     * Emergency stop - stop motors immediately
+     */
+    stop() {
+        const p = new commonACFly.ComponentArmDisarmCommand();
+        p.arm = 0; // disarm
+        p._param2 = 21196; // magic number for emergency stop
+        p._param7 = getNowTimestampMsUintFloat();
+        p.targetSystem = 1;
+        p.targetComponent = 1;
+        return this.airplane.sendMsg(p);
+    }
+
+    /**
+     * Hover in place - stop current movement
+     */
+    hover() {
+        const p = new commonACFly.ExtDroneMoveCommand();
+        p.direction = 1; // any direction
+        p.distance = 0; // zero distance
+        p.speed = 0; // zero speed
+        p._param7 = getNowTimestampMsUintFloat();
+        p.targetSystem = 1;
+        p.targetComponent = 1;
+        return this.airplane.sendMsg(p);
+    }
+
+    /**
+     * Flip forward
+     */
+    flipForward() {
+        const p = new commonACFly.ExtDroneExtraActionsCommand();
+        p.roll = 1;
+        p._param2 = 1; // forward
+        p._param7 = getNowTimestampMsUintFloat();
+        p.targetSystem = 1;
+        p.targetComponent = 1;
+        return this.airplane.sendMsg(p);
+    }
+
+    /**
+     * Flip backward
+     */
+    flipBack() {
+        const p = new commonACFly.ExtDroneExtraActionsCommand();
+        p.roll = 1;
+        p._param2 = 2; // backward
+        p._param7 = getNowTimestampMsUintFloat();
+        p.targetSystem = 1;
+        p.targetComponent = 1;
+        return this.airplane.sendMsg(p);
+    }
+
+    /**
+     * Flip left
+     */
+    flipLeft() {
+        const p = new commonACFly.ExtDroneExtraActionsCommand();
+        p.roll = 1;
+        p._param2 = 3; // left
+        p._param7 = getNowTimestampMsUintFloat();
+        p.targetSystem = 1;
+        p.targetComponent = 1;
+        return this.airplane.sendMsg(p);
+    }
+
+    /**
+     * Flip right
+     */
+    flipRight() {
+        const p = new commonACFly.ExtDroneExtraActionsCommand();
+        p.roll = 1;
+        p._param2 = 4; // right
+        p._param7 = getNowTimestampMsUintFloat();
+        p.targetSystem = 1;
+        p.targetComponent = 1;
+        return this.airplane.sendMsg(p);
+    }
+
 }
