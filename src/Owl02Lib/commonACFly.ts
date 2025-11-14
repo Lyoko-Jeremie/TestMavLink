@@ -2928,6 +2928,18 @@ export enum MavCmd {
   'EXT_DRONE_HOVER'                                = 283,
 
   /**
+   * xinguangfei
+   * @param1 cmd (min: 0, max: 1) 1：disarm
+   * @param3 Empty
+   * @param3 Empty
+   * @param4 Empty
+   * @param5 Empty
+   * @param6 Empty
+   * @param7 timestemp
+   */
+  'EXT_DRONE_URGENT_DISARM'                        = 284,
+
+  /**
    * xinguangfei ext set mode
    * @param1 Empty
    * @param2 Empty
@@ -24028,6 +24040,8 @@ export class HygrometerSensor extends MavLinkData {
   humidity: uint16_t
 }
 
+import { CommandLong } from './common'
+
 /**
  * request vehicle to send WGA code.
  */
@@ -29443,6 +29457,31 @@ export class ExtDroneHoverCommand extends CommandLong {
 }
 
 /**
+ * xinguangfei
+ */
+export class ExtDroneUrgentDisarmCommand extends CommandLong {
+  constructor(targetSystem = 1, targetComponent = 1) {
+    super()
+    this.command = MavCmd.EXT_DRONE_URGENT_DISARM as number
+    this.targetSystem = targetSystem
+    this.targetComponent = targetComponent
+  }
+
+  /**
+   * 1：disarm
+   *
+   * @min: 0
+   * @max: 1
+   */
+  get cmd() {
+    return this._param1
+  }
+  set cmd(value: number) {
+    this._param1 = value
+  }
+}
+
+/**
  * xinguangfei ext set mode
  */
 export class ExtDroneTotalCommand extends CommandLong {
@@ -33373,6 +33412,7 @@ export const COMMANDS: MavLinkCommandRegistry = {
   [MavCmd.EXT_ALL_DRONE_TURN]: ExtAllDroneTurnCommand,
   [MavCmd.EXT_DRONE_EXTRA_ACTIONS]: ExtDroneExtraActionsCommand,
   [MavCmd.EXT_DRONE_HOVER]: ExtDroneHoverCommand,
+  [MavCmd.EXT_DRONE_URGENT_DISARM]: ExtDroneUrgentDisarmCommand,
   [MavCmd.EXT_DRONE_TOTAL]: ExtDroneTotalCommand,
   [MavCmd.ACTUATOR_TEST]: ActuatorTestCommand,
   [MavCmd.CONFIGURE_ACTUATOR]: ConfigureActuatorCommand,
