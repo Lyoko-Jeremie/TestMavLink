@@ -529,10 +529,8 @@ export class AirplaneOwl02Commander {
      * Hover in place - stop current movement
      */
     hover() {
-        const p = new commonACFly.ExtDroneMoveCommand();
-        p.direction = 1; // any direction
-        p.distance = 0; // zero distance
-        p.speed = 0; // zero speed
+        const p = new commonACFly.ExtDroneHoverCommand();
+        p.cmd = 1;
         p._param7 = getNowTimestampMsUintFloat();
         p.targetSystem = 1;
         p.targetComponent = 1;
