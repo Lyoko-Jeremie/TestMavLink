@@ -4,12 +4,13 @@ import {
     AirplaneOwl02State,
 } from "./AirplaneOwl02Interface";
 import {AirplaneManagerOwl02Interface} from "./AirplaneManagerOwl02Interface";
-import {common, MavLinkData, MavLinkPacket, minimal, uint8_t} from "node-mavlink";
+import {MavLinkData, MavLinkPacket, uint8_t} from "node-mavlink";
 import {MavLinkPacket2DataProcessType, PackAndDataType} from "./CustomProtocolTransformManager";
 import {TimeBasedFifoCache} from "./utils/TimeBasedFifoCache";
 import {BehaviorSubject, filter, firstValueFrom, Subject} from "rxjs";
 import {timeoutWithoutError} from "./utils/rxjsTimeoutWithoutError";
 import * as commonACFly from './Owl02Lib/commonACFly';
+import * as minimalACFly from './Owl02Lib/minimalACFly';
 import {getNowTimestampMsUintFloat, mathMod} from "./AirplaneTimestamp";
 
 export interface MavLinkPacketRecord<D extends MavLinkData = MavLinkData> {
@@ -34,39 +35,39 @@ export class AirplaneOwl02 implements AirplaneOwl02Interface {
     protected parseTable: { [key: number]: (data: PackAndDataType) => void };
     protected cachedPacketIds: Set<number>;
 
-    protected cacheStateText: TimeBasedFifoCache<MavLinkPacketRecord<common.StatusText>> = new TimeBasedFifoCache({
+    protected cacheStateText: TimeBasedFifoCache<MavLinkPacketRecord<commonACFly.StatusText>> = new TimeBasedFifoCache({
         timeout: 1000 * 60 * 5,
         maxSize: 30,
     });
 
     public commander: AirplaneOwl02Commander;
     protected packStream = new Subject<MavLinkPacketRecord>();
-    protected ackPackStream = new BehaviorSubject<PackAndDataType<common.CommandAck> | undefined>(undefined);
+    protected ackPackStream = new BehaviorSubject<PackAndDataType<commonACFly.CommandAck> | undefined>(undefined);
 
     constructor(
         public targetChannelId: number,
         public manager: AirplaneManagerOwl02Interface,
     ) {
         this.parseTable = {
-            [minimal.Heartbeat.MSG_ID]: this.parseHeartbeat.bind(this),
-            [common.ExtendedSysState.MSG_ID]: this.parseLandState.bind(this),
-            [common.AutopilotVersion.MSG_ID]: this.parseAutopilotVersion.bind(this),
-            [common.StatusText.MSG_ID]: this.parseStatusText.bind(this),
-            [common.CommandAck.MSG_ID]: this.parseAck.bind(this),
+            [minimalACFly.Heartbeat.MSG_ID]: this.parseHeartbeat.bind(this),
+            [commonACFly.ExtendedSysState.MSG_ID]: this.parseLandState.bind(this),
+            [commonACFly.AutopilotVersion.MSG_ID]: this.parseAutopilotVersion.bind(this),
+            [commonACFly.StatusText.MSG_ID]: this.parseStatusText.bind(this),
+            [commonACFly.CommandAck.MSG_ID]: this.parseAck.bind(this),
             [commonACFly.BatteryStatusAcfly.MSG_ID]: this.parseBatteryStatusAcfly.bind(this),
         };
         this.cachedPacketIds = new Set<number>([
             // 飞控解算位置
             // 报文MAVLINK_MSG_ID_GLOBAL_POSITION_INT ，ID=33，2HZ
-            common.GlobalPositionInt.MSG_ID,
-            common.GpsRawInt.MSG_ID,
-            common.Gps2Raw.MSG_ID,
-            common.VfrHud.MSG_ID,
-            common.Attitude.MSG_ID,
-            common.RcChannels.MSG_ID,
-            common.RcChannelsScaled.MSG_ID,
-            common.MissionCurrent.MSG_ID,
-            common.BatteryStatus.MSG_ID,
+            commonACFly.GlobalPositionInt.MSG_ID,
+            commonACFly.GpsRawInt.MSG_ID,
+            commonACFly.Gps2Raw.MSG_ID,
+            commonACFly.VfrHud.MSG_ID,
+            commonACFly.Attitude.MSG_ID,
+            commonACFly.RcChannels.MSG_ID,
+            commonACFly.RcChannelsScaled.MSG_ID,
+            commonACFly.MissionCurrent.MSG_ID,
+            commonACFly.BatteryStatus.MSG_ID,
             commonACFly.BatteryStatusAcfly.MSG_ID,
         ]);
         this.commander = new AirplaneOwl02Commander(this);
@@ -95,17 +96,23 @@ export class AirplaneOwl02 implements AirplaneOwl02Interface {
         this.packStream.next(record);
     }
 
-    public sendMsg(msg: MavLinkData) {
+    public sendMsg<M extends Exclude<MavLinkData, commonACFly.CommandLong>>(msg: M) {
+        return this.manager.m.sendMsg(msg, this.targetChannelId);
+    }
+
+    public sendMsgCommand<M extends commonACFly.CommandLong>(msg: M) {
+        msg.targetComponent = 1;
+        msg.targetSystem = 1;
         return this.manager.m.sendMsg(msg, this.targetChannelId);
     }
 
     public async sendHeartbeat() {
-        const commandHeartbeat = new minimal.Heartbeat();
-        commandHeartbeat.type = minimal.MavType.GCS;
-        commandHeartbeat.autopilot = minimal.MavAutopilot.INVALID;
+        const commandHeartbeat = new minimalACFly.Heartbeat();
+        commandHeartbeat.type = minimalACFly.MavType.GCS;
+        commandHeartbeat.autopilot = minimalACFly.MavAutopilot.INVALID;
         // (base_mode&0x80) ==0x80 飞机已解锁，
         // (base_mode&0x80) !=0x80 飞机未解锁.
-        commandHeartbeat.baseMode = minimal.MavModeFlag.CUSTOM_MODE_ENABLED;
+        commandHeartbeat.baseMode = minimalACFly.MavModeFlag.CUSTOM_MODE_ENABLED;
         await this.sendMsg(commandHeartbeat);
     }
 
@@ -113,24 +120,22 @@ export class AirplaneOwl02 implements AirplaneOwl02Interface {
      * call this , and then the autopilot will send back AutopilotVersion pack
      */
     public async triggerGetAutopilotVersion() {
-        const p = new common.RequestAutopilotCapabilitiesCommand();
-        p.targetComponent = 1;
-        p.targetComponent = 1;
-        return await this.sendMsg(p);
+        const p = new commonACFly.RequestAutopilotCapabilitiesCommand();
+        return await this.sendMsgCommand(p);
     }
 
     protected parseHeartbeat(data: PackAndDataType) {
-        const p = data.data.mavLinkData as minimal.Heartbeat;
+        const p = data.data.mavLinkData as minimalACFly.Heartbeat;
         this.state.isArmed = (p.baseMode & 0x80) === 0x80;
     }
 
     protected parseLandState(data: PackAndDataType) {
-        const p = data.data.mavLinkData as common.ExtendedSysState;
+        const p = data.data.mavLinkData as commonACFly.ExtendedSysState;
         this.state.isLanded = p.landedState;
     }
 
     protected parseStatusText(data: PackAndDataType) {
-        const p = data.data as MavLinkPacket2DataProcessType<common.StatusText>;
+        const p = data.data as MavLinkPacket2DataProcessType<commonACFly.StatusText>;
         this.cacheStateText.push({
             time: moment(),
             pack: data.packet,
@@ -140,12 +145,12 @@ export class AirplaneOwl02 implements AirplaneOwl02Interface {
     }
 
     protected parseAutopilotVersion(data: PackAndDataType) {
-        const p = data.data.mavLinkData as common.AutopilotVersion;
+        const p = data.data.mavLinkData as commonACFly.AutopilotVersion;
     }
 
     protected parseAck(data: PackAndDataType) {
-        this.ackPackStream.next(data as PackAndDataType<common.CommandAck>);
-        const p = data.data.mavLinkData as common.CommandAck;
+        this.ackPackStream.next(data as PackAndDataType<commonACFly.CommandAck>);
+        const p = data.data.mavLinkData as commonACFly.CommandAck;
         // TODO
         console.log('[AirplaneOwl02] CommandAck:', p);
         const cmdId = p.command;
@@ -205,7 +210,7 @@ export class AirplaneOwl02 implements AirplaneOwl02Interface {
     }
 
     public getGpsPos() {
-        const p = this.cachedPacketRecord.get(common.GlobalPositionInt.MSG_ID) as undefined | common.GlobalPositionInt;
+        const p = this.cachedPacketRecord.get(commonACFly.GlobalPositionInt.MSG_ID) as undefined | commonACFly.GlobalPositionInt;
         if (!p) {
             return undefined;
         }
@@ -222,7 +227,7 @@ export class AirplaneOwl02 implements AirplaneOwl02Interface {
     }
 
     public getAttitude() {
-        const p = this.cachedPacketRecord.get(common.Attitude.MSG_ID) as undefined | common.Attitude;
+        const p = this.cachedPacketRecord.get(commonACFly.Attitude.MSG_ID) as undefined | commonACFly.Attitude;
         if (!p) {
             return undefined;
         }
@@ -247,9 +252,9 @@ export class AirplaneOwl02 implements AirplaneOwl02Interface {
         });
     }
 
-    public waitAckOnce(timeoutMs: number, command: common.MavCmd) {
+    public waitAckOnce(timeoutMs: number, command: commonACFly.MavCmd) {
         return firstValueFrom(this.ackPackStream.pipe(
-            filter((T): T is PackAndDataType<common.CommandAck> => !!T),
+            filter((T): T is PackAndDataType<commonACFly.CommandAck> => !!T),
             filter(P => P.data.mavLinkData.command === command),
             timeoutWithoutError(timeoutMs, undefined),
         ));
@@ -275,18 +280,14 @@ export class AirplaneOwl02Commander {
         const p = new commonACFly.ComponentArmDisarmCommand();
         p.arm = 0;
         p._param7 = getNowTimestampMsUintFloat();
-        p.targetSystem = 1;
-        p.targetComponent = 1;
-        return this.airplane.sendMsg(p);
+        return this.airplane.sendMsgCommand(p);
     }
 
     unlock() {
         const p = new commonACFly.ComponentArmDisarmCommand();
         p.arm = 1;
         p._param7 = getNowTimestampMsUintFloat();
-        p.targetSystem = 1;
-        p.targetComponent = 1;
-        return this.airplane.sendMsg(p);
+        return this.airplane.sendMsgCommand(p);
     }
 
     /**
@@ -296,9 +297,7 @@ export class AirplaneOwl02Commander {
         const p = new commonACFly.ExtDroneTakeoffCommand();
         p.height = height;
         p._param7 = getNowTimestampMsUintFloat();
-        p.targetSystem = 1;
-        p.targetComponent = 1;
-        return this.airplane.sendMsg(p);
+        return this.airplane.sendMsgCommand(p);
     }
 
     /**
@@ -311,9 +310,7 @@ export class AirplaneOwl02Commander {
         p.land_mode = 1;
         p.landspeed = 0;
         p._param7 = getNowTimestampMsUintFloat();
-        p.targetSystem = 1;
-        p.targetComponent = 1;
-        return this.airplane.sendMsg(p);
+        return this.airplane.sendMsgCommand(p);
     }
 
     /**
@@ -330,9 +327,7 @@ export class AirplaneOwl02Commander {
         p.target_y = y;
         p.target_z = h;
         p._param7 = getNowTimestampMsUintFloat();
-        p.targetSystem = 1;
-        p.targetComponent = 1;
-        return this.airplane.sendMsg(p);
+        return this.airplane.sendMsgCommand(p);
     }
 
     /**
@@ -347,9 +342,7 @@ export class AirplaneOwl02Commander {
         p.speed = speed;
         p.relative_or_absolute = 0;
         p._param7 = getNowTimestampMsUintFloat();
-        p.targetSystem = 1;
-        p.targetComponent = 1;
-        return this.airplane.sendMsg(p);
+        return this.airplane.sendMsgCommand(p);
     }
 
     up(distance: number, speed: number = 0) {
@@ -387,9 +380,7 @@ export class AirplaneOwl02Commander {
         p.direction = forward;
         p.degrees = degrees;
         p._param7 = getNowTimestampMsUintFloat();
-        p.targetSystem = 1;
-        p.targetComponent = 1;
-        return this.airplane.sendMsg(p);
+        return this.airplane.sendMsgCommand(p);
     }
 
     cw(degrees: number) {
@@ -404,9 +395,7 @@ export class AirplaneOwl02Commander {
         const p = new commonACFly.ExtDroneChangeSpeedCommand();
         p.speed = speed;
         p._param7 = getNowTimestampMsUintFloat();
-        p.targetSystem = 1;
-        p.targetComponent = 1;
-        return this.airplane.sendMsg(p);
+        return this.airplane.sendMsgCommand(p);
     }
 
     light(r: number, g: number, b: number) {
@@ -417,9 +406,7 @@ export class AirplaneOwl02Commander {
         p.breathe = 0;
         p.rainbow = 0;
         p._param7 = getNowTimestampMsUintFloat();
-        p.targetSystem = 1;
-        p.targetComponent = 1;
-        return this.airplane.sendMsg(p);
+        return this.airplane.sendMsgCommand(p);
     }
 
     rainbow(r: number, g: number, b: number) {
@@ -430,9 +417,7 @@ export class AirplaneOwl02Commander {
         p.breathe = 0;
         p.rainbow = 1;
         p._param7 = getNowTimestampMsUintFloat();
-        p.targetSystem = 1;
-        p.targetComponent = 1;
-        return this.airplane.sendMsg(p);
+        return this.airplane.sendMsgCommand(p);
     }
 
     breathe(r: number, g: number, b: number) {
@@ -443,9 +428,7 @@ export class AirplaneOwl02Commander {
         p.breathe = 1;
         p.rainbow = 0;
         p._param7 = getNowTimestampMsUintFloat();
-        p.targetSystem = 1;
-        p.targetComponent = 1;
-        return this.airplane.sendMsg(p);
+        return this.airplane.sendMsgCommand(p);
     }
 
     /**
@@ -454,9 +437,7 @@ export class AirplaneOwl02Commander {
     returnToLaunch() {
         const p = new commonACFly.NavReturnToLaunchCommand();
         p._param7 = getNowTimestampMsUintFloat();
-        p.targetSystem = 1;
-        p.targetComponent = 1;
-        return this.airplane.sendMsg(p);
+        return this.airplane.sendMsgCommand(p);
     }
 
     /**
@@ -471,9 +452,7 @@ export class AirplaneOwl02Commander {
         p.speed = speed;
         p.relative_or_absolute = 1;
         p._param7 = getNowTimestampMsUintFloat();
-        p.targetSystem = 1;
-        p.targetComponent = 1;
-        return this.airplane.sendMsg(p);
+        return this.airplane.sendMsgCommand(p);
     }
 
     /**
@@ -484,9 +463,7 @@ export class AirplaneOwl02Commander {
         const p = new commonACFly.ExtDroneSetModeCommand();
         p.mode = mode;
         p._param7 = getNowTimestampMsUintFloat();
-        p.targetSystem = 1;
-        p.targetComponent = 1;
-        return this.airplane.sendMsg(p);
+        return this.airplane.sendMsgCommand(p);
     }
 
     /**
@@ -507,9 +484,7 @@ export class AirplaneOwl02Commander {
         p.b_l = b_min;
         p.b_h = b_max;
         p._param7 = getNowTimestampMsUintFloat();
-        p.targetSystem = 1;
-        p.targetComponent = 1;
-        return this.airplane.sendMsg(p);
+        return this.airplane.sendMsgCommand(p);
     }
 
     /**
@@ -520,9 +495,7 @@ export class AirplaneOwl02Commander {
         p.arm = 0; // disarm
         p._param2 = 21196; // magic number for emergency stop
         p._param7 = getNowTimestampMsUintFloat();
-        p.targetSystem = 1;
-        p.targetComponent = 1;
-        return this.airplane.sendMsg(p);
+        return this.airplane.sendMsgCommand(p);
     }
 
     /**
@@ -532,9 +505,7 @@ export class AirplaneOwl02Commander {
         const p = new commonACFly.ExtDroneHoverCommand();
         p.cmd = 1;
         p._param7 = getNowTimestampMsUintFloat();
-        p.targetSystem = 1;
-        p.targetComponent = 1;
-        return this.airplane.sendMsg(p);
+        return this.airplane.sendMsgCommand(p);
     }
 
     /**
@@ -545,9 +516,7 @@ export class AirplaneOwl02Commander {
         p.roll = 1;
         p._param2 = 1; // forward
         p._param7 = getNowTimestampMsUintFloat();
-        p.targetSystem = 1;
-        p.targetComponent = 1;
-        return this.airplane.sendMsg(p);
+        return this.airplane.sendMsgCommand(p);
     }
 
     /**
@@ -558,9 +527,7 @@ export class AirplaneOwl02Commander {
         p.roll = 1;
         p._param2 = 2; // backward
         p._param7 = getNowTimestampMsUintFloat();
-        p.targetSystem = 1;
-        p.targetComponent = 1;
-        return this.airplane.sendMsg(p);
+        return this.airplane.sendMsgCommand(p);
     }
 
     /**
@@ -571,9 +538,7 @@ export class AirplaneOwl02Commander {
         p.roll = 1;
         p._param2 = 3; // left
         p._param7 = getNowTimestampMsUintFloat();
-        p.targetSystem = 1;
-        p.targetComponent = 1;
-        return this.airplane.sendMsg(p);
+        return this.airplane.sendMsgCommand(p);
     }
 
     /**
@@ -584,9 +549,7 @@ export class AirplaneOwl02Commander {
         p.roll = 1;
         p._param2 = 4; // right
         p._param7 = getNowTimestampMsUintFloat();
-        p.targetSystem = 1;
-        p.targetComponent = 1;
-        return this.airplane.sendMsg(p);
+        return this.airplane.sendMsgCommand(p);
     }
 
 }
