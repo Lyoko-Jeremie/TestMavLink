@@ -103,6 +103,7 @@ export class AirplaneOwl02 implements AirplaneOwl02Interface {
     public sendMsgCommand<M extends commonACFly.CommandLong>(msg: M) {
         msg.targetComponent = 1;
         msg.targetSystem = 1;
+        msg._param7 = getNowTimestampMsUintFloat();
         return this.manager.m.sendMsg(msg, this.targetChannelId);
     }
 
@@ -121,7 +122,7 @@ export class AirplaneOwl02 implements AirplaneOwl02Interface {
      */
     public async triggerGetAutopilotVersion() {
         const p = new commonACFly.RequestAutopilotCapabilitiesCommand();
-        return await this.sendMsgCommand(p);
+        return this.sendMsgCommand(p);
     }
 
     protected parseHeartbeat(data: PackAndDataType) {
@@ -279,14 +280,12 @@ export class AirplaneOwl02Commander {
     lock() {
         const p = new commonACFly.ComponentArmDisarmCommand();
         p.arm = 0;
-        p._param7 = getNowTimestampMsUintFloat();
         return this.airplane.sendMsgCommand(p);
     }
 
     unlock() {
         const p = new commonACFly.ComponentArmDisarmCommand();
         p.arm = 1;
-        p._param7 = getNowTimestampMsUintFloat();
         return this.airplane.sendMsgCommand(p);
     }
 
@@ -296,7 +295,6 @@ export class AirplaneOwl02Commander {
     takeoff(height: number) {
         const p = new commonACFly.ExtDroneTakeoffCommand();
         p.height = height;
-        p._param7 = getNowTimestampMsUintFloat();
         return this.airplane.sendMsgCommand(p);
     }
 
@@ -309,7 +307,6 @@ export class AirplaneOwl02Commander {
         const p = new commonACFly.ExtDroneLandCommand();
         p.land_mode = 1;
         p.landspeed = 0;
-        p._param7 = getNowTimestampMsUintFloat();
         return this.airplane.sendMsgCommand(p);
     }
 
@@ -326,7 +323,6 @@ export class AirplaneOwl02Commander {
         p.target_x = x;
         p.target_y = y;
         p.target_z = h;
-        p._param7 = getNowTimestampMsUintFloat();
         return this.airplane.sendMsgCommand(p);
     }
 
@@ -341,7 +337,6 @@ export class AirplaneOwl02Commander {
         p.distance = distance;
         p.speed = speed;
         p.relative_or_absolute = 0;
-        p._param7 = getNowTimestampMsUintFloat();
         return this.airplane.sendMsgCommand(p);
     }
 
@@ -379,7 +374,6 @@ export class AirplaneOwl02Commander {
         const p = new commonACFly.ExtDroneCircleCommand();
         p.direction = forward;
         p.degrees = degrees;
-        p._param7 = getNowTimestampMsUintFloat();
         return this.airplane.sendMsgCommand(p);
     }
 
@@ -394,7 +388,6 @@ export class AirplaneOwl02Commander {
     setSpeed(speed: number) {
         const p = new commonACFly.ExtDroneChangeSpeedCommand();
         p.speed = speed;
-        p._param7 = getNowTimestampMsUintFloat();
         return this.airplane.sendMsgCommand(p);
     }
 
@@ -405,7 +398,6 @@ export class AirplaneOwl02Commander {
         p.b = b;
         p.breathe = 0;
         p.rainbow = 0;
-        p._param7 = getNowTimestampMsUintFloat();
         return this.airplane.sendMsgCommand(p);
     }
 
@@ -416,7 +408,6 @@ export class AirplaneOwl02Commander {
         p.b = b;
         p.breathe = 0;
         p.rainbow = 1;
-        p._param7 = getNowTimestampMsUintFloat();
         return this.airplane.sendMsgCommand(p);
     }
 
@@ -427,7 +418,6 @@ export class AirplaneOwl02Commander {
         p.b = b;
         p.breathe = 1;
         p.rainbow = 0;
-        p._param7 = getNowTimestampMsUintFloat();
         return this.airplane.sendMsgCommand(p);
     }
 
@@ -436,7 +426,6 @@ export class AirplaneOwl02Commander {
      */
     returnToLaunch() {
         const p = new commonACFly.NavReturnToLaunchCommand();
-        p._param7 = getNowTimestampMsUintFloat();
         return this.airplane.sendMsgCommand(p);
     }
 
@@ -451,7 +440,6 @@ export class AirplaneOwl02Commander {
         p.distance = high;
         p.speed = speed;
         p.relative_or_absolute = 1;
-        p._param7 = getNowTimestampMsUintFloat();
         return this.airplane.sendMsgCommand(p);
     }
 
@@ -462,7 +450,6 @@ export class AirplaneOwl02Commander {
     setMode(mode: 1 | 2 | 3) {
         const p = new commonACFly.ExtDroneSetModeCommand();
         p.mode = mode;
-        p._param7 = getNowTimestampMsUintFloat();
         return this.airplane.sendMsgCommand(p);
     }
 
@@ -483,18 +470,15 @@ export class AirplaneOwl02Commander {
         p.a_h = a_max;
         p.b_l = b_min;
         p.b_h = b_max;
-        p._param7 = getNowTimestampMsUintFloat();
         return this.airplane.sendMsgCommand(p);
     }
 
     /**
      * Emergency stop - stop motors immediately
      */
-    stop() {
-        const p = new commonACFly.ComponentArmDisarmCommand();
-        p.arm = 0; // disarm
-        p._param2 = 21196; // magic number for emergency stop
-        p._param7 = getNowTimestampMsUintFloat();
+    emergency_stop() {
+        const p = new commonACFly.ExtDroneUrgentDisarmCommand();
+        p.cmd = 1; // disarm
         return this.airplane.sendMsgCommand(p);
     }
 
@@ -504,7 +488,6 @@ export class AirplaneOwl02Commander {
     hover() {
         const p = new commonACFly.ExtDroneHoverCommand();
         p.cmd = 1;
-        p._param7 = getNowTimestampMsUintFloat();
         return this.airplane.sendMsgCommand(p);
     }
 
@@ -515,7 +498,6 @@ export class AirplaneOwl02Commander {
         const p = new commonACFly.ExtDroneExtraActionsCommand();
         p.roll = 1;
         p._param2 = 1; // forward
-        p._param7 = getNowTimestampMsUintFloat();
         return this.airplane.sendMsgCommand(p);
     }
 
@@ -526,7 +508,6 @@ export class AirplaneOwl02Commander {
         const p = new commonACFly.ExtDroneExtraActionsCommand();
         p.roll = 1;
         p._param2 = 2; // backward
-        p._param7 = getNowTimestampMsUintFloat();
         return this.airplane.sendMsgCommand(p);
     }
 
@@ -537,7 +518,6 @@ export class AirplaneOwl02Commander {
         const p = new commonACFly.ExtDroneExtraActionsCommand();
         p.roll = 1;
         p._param2 = 3; // left
-        p._param7 = getNowTimestampMsUintFloat();
         return this.airplane.sendMsgCommand(p);
     }
 
@@ -548,7 +528,6 @@ export class AirplaneOwl02Commander {
         const p = new commonACFly.ExtDroneExtraActionsCommand();
         p.roll = 1;
         p._param2 = 4; // right
-        p._param7 = getNowTimestampMsUintFloat();
         return this.airplane.sendMsgCommand(p);
     }
 
