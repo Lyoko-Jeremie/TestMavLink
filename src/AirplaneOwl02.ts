@@ -300,8 +300,6 @@ export class AirplaneOwl02Commander {
 
     /**
      * 一键降落
-     * @param landHeight    降落高度(相对起飞点)，单位m
-     * @param yawAngle      飞机航向，单位度
      */
     land() {
         const p = new commonACFly.ExtDroneLandCommand();
