@@ -1,18 +1,15 @@
 import {SerialPort} from 'serialport';
 import {
-    ardupilotmega,
-    common, MavLinkData,
-    MavLinkPacketRegistry,
+    MavLinkData,
     MavLinkProtocolV2,
-    minimal,
-    registerCustomMessageMagicNumber,
 } from 'node-mavlink';
 import {CustomProtocolTransformManager} from "./CustomProtocolTransformManager";
 import {MavStateCollector} from "./MavStateCollector";
 import {UtilTimer} from "./utils/UtilTimer";
-import {MSG_ID_MAGIC_NUMBER} from "./Owl02Lib/magic-numbers";
 import * as commonACFly from "./Owl02Lib/commonACFly";
+import * as minimalACFly from "./Owl02Lib/minimalACFly";
 import {getNowTimestampMsUintFloat} from "./AirplaneTimestamp";
+import {REGISTRY} from "./Owl02Lib/commonACFly";
 
 // 替换 COM3 为你的串口路径，或从环境变量设置，可以使用 UsbTreeView 或从设备管理中查看当前所有串口
 const comPortString = process.env.COM_PORT_STRING || 'COM10';
@@ -21,19 +18,6 @@ const comPortString = process.env.COM_PORT_STRING || 'COM10';
 console.log('comPortString', comPortString);
 
 console.log('Hello World ✨');
-
-// create a registry of mappings between a message id and a data class
-// 注册表，用于将消息ID映射到数据类
-const REGISTRY: MavLinkPacketRegistry = {
-    ...minimal.REGISTRY,
-    ...common.REGISTRY,
-    ...ardupilotmega.REGISTRY,
-    ...{
-        602: commonACFly.BatteryStatusAcfly,
-    }
-};
-
-registerCustomMessageMagicNumber('602', MSG_ID_MAGIC_NUMBER['602']);    // BatteryStatusAcfly
 
 // 初始化 SerialPort 实例
 const port = new SerialPort({path: comPortString, baudRate: 921600});
@@ -174,12 +158,12 @@ async function sleep(ms: number): Promise<void> {
 
 const heartbeatTimer = new UtilTimer(
     async () => {
-        const commandHeartbeat = new minimal.Heartbeat();
-        commandHeartbeat.type = minimal.MavType.GCS;
-        commandHeartbeat.autopilot = minimal.MavAutopilot.INVALID;
+        const commandHeartbeat = new minimalACFly.Heartbeat();
+        commandHeartbeat.type = minimalACFly.MavType.GCS;
+        commandHeartbeat.autopilot = minimalACFly.MavAutopilot.INVALID;
         // (base_mode&0x80) ==0x80 飞机已解锁，
         // (base_mode&0x80) !=0x80 飞机未解锁.
-        commandHeartbeat.baseMode = minimal.MavModeFlag.CUSTOM_MODE_ENABLED;
+        commandHeartbeat.baseMode = minimalACFly.MavModeFlag.CUSTOM_MODE_ENABLED;
         // custom_mode的第3个字节代表飞机的主模式，定义如下
         // 定高模式（2）
         // 定点模式（3）
@@ -195,7 +179,7 @@ const heartbeatTimer = new UtilTimer(
         // 	普通定点模式（0）
         // 	定点避障模式（2）
         // commandHeartbeat.customMode = ;
-        commandHeartbeat.systemStatus = minimal.MavState.ACTIVE;
+        commandHeartbeat.systemStatus = minimalACFly.MavState.ACTIVE;
     },
     console,
     500,
@@ -209,16 +193,16 @@ port.on('open', async () => {
 
     // 构造一个心跳包，填充数据并发送
     console.log('====== commandHeartbeat');
-    const commandHeartbeat = new minimal.Heartbeat();
-    commandHeartbeat.systemStatus = minimal.MavState.STANDBY;
+    const commandHeartbeat = new minimalACFly.Heartbeat();
+    commandHeartbeat.systemStatus = minimalACFly.MavState.STANDBY;
     // console.log(m.debugSerializeMavLinkMsg(commandHeartbeat));
     // 将心跳包发送到设备ID 0
     await m.sendMsg(commandHeartbeat, 0);
-    // commandHeartbeat.systemStatus = minimal.MavState.BOOT;
+    // commandHeartbeat.systemStatus = minimalACFly.MavState.BOOT;
     // 将心跳包发送到设备ID 1
     await m.sendMsg(commandHeartbeat, 1);
     //
-    // commandHeartbeat.systemStatus = minimal.MavState.POWEROFF;
+    // commandHeartbeat.systemStatus = minimalACFly.MavState.POWEROFF;
     // 将心跳包发送到设备ID 3
     await m.sendMsg(commandHeartbeat, 3);
     //
