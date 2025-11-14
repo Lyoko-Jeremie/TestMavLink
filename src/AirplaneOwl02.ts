@@ -313,10 +313,8 @@ export class AirplaneOwl02Commander {
      * @param x       （x，cm）
      * @param y       （y，cm）
      * @param h       （高度，cm）
-     * @param yawAngle  （航向角，-360 ~360，填nan则指向航点再飞过去， 填1000则不旋转偏航）
-     * @param speed     （速度，m/s）
      */
-    goto(x: number, y: number, h: number, yawAngle: number, speed: number) {
+    goto(x: number, y: number, h: number) {
         const p = new commonACFly.ExtDroneGotoCmdCommand();
         p.target_x = x;
         p.target_y = y;
