@@ -332,7 +332,6 @@ export class AirplaneOwl02Commander {
         p.direction = 5;
         p.distance = distance;
         p.speed = speed;
-        p.relative_or_absolute = 0;
         return this.airplane.sendMsgCommand(p);
     }
 
@@ -428,14 +427,10 @@ export class AirplaneOwl02Commander {
     /**
      * Set altitude - simplified version of goto
      * @param high altitude in cm
-     * @param speed
      */
-    high(high: number, speed: number = 0) {
-        const p = new commonACFly.ExtDroneMoveCommand();
-        p.direction = 1;
-        p.distance = high;
-        p.speed = speed;
-        p.relative_or_absolute = 1;
+    high(high: number) {
+        const p = new commonACFly.ExtDroneSetHeghtCommand();
+        p.height = high;
         return this.airplane.sendMsgCommand(p);
     }
 
@@ -459,7 +454,7 @@ export class AirplaneOwl02Commander {
      * @param b_max B channel max value
      */
     setColorDetectMode(l_min: number, l_max: number, a_min: number, a_max: number, b_min: number, b_max: number) {
-        const p = new commonACFly.ExtDroneVersionDetectModeSetCommand();
+        const p = new commonACFly.ExtDroneVisionDetectModeSetCommand();
         p.l_l = l_min;
         p.l_h = l_max;
         p.a_l = a_min;
@@ -524,6 +519,33 @@ export class AirplaneOwl02Commander {
         const p = new commonACFly.ExtDroneExtraActionsCommand();
         p.roll = 1;
         p._param2 = 4; // right
+        return this.airplane.sendMsgCommand(p);
+    }
+
+    /**
+     * 设置openmv识别模式
+     * @param mode (1常规 2巡线 3跟随)
+     */
+    set_openmv_mode(mode: number) {
+        const p = new commonACFly.ExtDroneSetModeCommand();
+        p.mode = mode;
+        return this.airplane.sendMsgCommand(p);
+    }
+
+    /**
+     * 开始OPENMV相关运动 MAV_CMD_EXT_DRONE_OPEMMV_CMD
+     * 开启之前要通过 MAV_CMD_EXT_DRONE_SET_MODE / MAV_CMD_EXT_DRONE_VISION_DETECT_MODE_SET 对应的识别模式和设置
+     * @param cmd  视觉模式值 (0:巡线 1:锁定二维码，飞到二维码正上方，3：寻找色块)
+     * @param x    x轴移动距离
+     * @param y    y轴移动距离
+     * @param z    z轴移动距离
+     */
+    go_openmv_cmd(cmd: number, x: number, y: number, z: number) {
+        const p = new commonACFly.ExtDroneOpemmvCmdCommand();
+        p.cmd = cmd;
+        p.xDistance = x;
+        p.yDistance = y;
+        p.zDistance = z;
         return this.airplane.sendMsgCommand(p);
     }
 
