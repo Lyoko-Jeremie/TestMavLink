@@ -2784,40 +2784,16 @@ export enum MavCmd {
   'EXT_DRONE_LAND'                                 = 271,
 
   /**
-   * xingangfei ext command move
-   * @param1 direction (min: 0, max: 6) //front:03/behind:04/left:05/right:06/up:01/down:02
-   * @param2 distance[cm] (min: 0, max: 1000) distance
-   * @param3 speed[cm/s] (min: 0, max: 200) speed
-   * @param4 relative_or_absolute (min: 0, max: 1) 0 relative high 1:absolute high
-   * @param5 Empty
-   * @param6 Empty
-   * @param7 timestemp
-   */
-  'EXT_DRONE_MOVE'                                 = 272,
-
-  /**
-   * xingangfei ext command circle
-   * @param1 direction (min: 0, max: 1) 0 Counterclockwise  1 clockwise
-   * @param2 degrees (min: 0, max: 360) degrees
+   * xingangfei ext set absolute height
+   * @param1 height[cm] (min: 0, max: 200) distance
+   * @param2 Empty
    * @param3 Empty
    * @param4 Empty
    * @param5 Empty
    * @param6 Empty
    * @param7 timestemp
    */
-  'EXT_DRONE_CIRCLE'                               = 273,
-
-  /**
-   * xinguangfei ext command waypoint
-   * @param1 x Distance[m] (min: -1000, max: 1000) x Distance
-   * @param2 y Distance[m] (min: -1000, max: 1000) y Distance
-   * @param3 z Distance[m] (min: -200, max: 200) z Distance
-   * @param4 Empty
-   * @param5 Empty
-   * @param6 Empty
-   * @param7 timestemp
-   */
-  'EXT_DRONE_WAYPOINT'                             = 274,
+  'EXT_DRONE_SET_HEGHT'                            = 272,
 
   /**
    * xinguangfei ext change speed
@@ -2829,67 +2805,43 @@ export enum MavCmd {
    * @param6 Empty
    * @param7 timestemp
    */
-  'EXT_DRONE_CHANGE_SPEED'                         = 275,
+  'EXT_DRONE_CHANGE_SPEED'                         = 273,
 
   /**
-   * xinguangfei ext change speed
-   * @param1 R (min: 0, max: 255) R
-   * @param2 G (min: 0, max: 255) G
-   * @param3 B (min: 0, max: 255) b
-   * @param4 Breathe (min: 0, max: 1) Breathe
-   * @param5 rainbow (min: 0, max: 1) rainbow
+   * xingangfei ext command move
+   * @param1 direction (min: 0, max: 6) //front:03/behind:04/left:05/right:06/up:01/down:02
+   * @param2 distance[cm] (min: 0, max: 1000) distance
+   * @param3 speed[cm/s] (min: 0, max: 200) speed
+   * @param4 Empty
+   * @param5 Empty
    * @param6 Empty
    * @param7 timestemp
    */
-  'EXT_DRONE_LIGHT_RGB'                            = 276,
+  'EXT_DRONE_MOVE'                                 = 274,
 
   /**
-   * xinguangfei ext set mode
-   * @param1 mode 1:normal 2:track line 3:color square 4:specific tag
-   * @param2 Empty
+   * xinguangfei ext command waypoint
+   * @param1 x Distance[m] (min: -1000, max: 1000) x Distance
+   * @param2 y Distance[m] (min: -1000, max: 1000) y Distance
+   * @param3 z Distance[m] (min: -200, max: 200) z Distance
+   * @param4 Empty
+   * @param5 Empty
+   * @param6 Empty
+   * @param7 timestemp
+   */
+  'EXT_DRONE_WAYPOINT'                             = 275,
+
+  /**
+   * xingangfei ext command circle
+   * @param1 direction (min: 0, max: 1) 0 Counterclockwise  1 clockwise
+   * @param2 degrees (min: 0, max: 360) degrees
    * @param3 Empty
    * @param4 Empty
    * @param5 Empty
    * @param6 Empty
    * @param7 timestemp
    */
-  'EXT_DRONE_SET_MODE'                             = 277,
-
-  /**
-   * xinguangfei ext set mode
-   * @param1 L_L Min detection value of color block L channel
-   * @param2 L_H Max detection value of color block L channel
-   * @param3 A_L Min detection value of color block A channel
-   * @param4 A_H Max detection value of color block A channel
-   * @param5 B_L Min detection value of color block B channel
-   * @param6 B_H Max detection value of color block B channel
-   * @param7 timestemp
-   */
-  'EXT_DRONE_VERSION_DETECT_MODE_SET'              = 278,
-
-  /**
-   * xinguangfei ext goto target loc
-   * @param1 target_X null
-   * @param2 target_Y null
-   * @param3 target_Z null
-   * @param4 Empty
-   * @param5 Empty
-   * @param6 Empty
-   * @param7 timestemp
-   */
-  'EXT_DRONE_GOTO_CMD'                             = 279,
-
-  /**
-   * xinguangfei ext goto target loc
-   * @param1 cmd (min: 0, max: 1) 0:fllowline 1:lock apritag 2:find color block
-   * @param2 x Distance[m] (min: -1000, max: 1000) x Distance
-   * @param3 y Distance[m] (min: -1000, max: 1000) y Distance
-   * @param4 z Distance[m] (min: -200, max: 200) z Distance
-   * @param5 Empty
-   * @param6 Empty
-   * @param7 timestemp
-   */
-  'EXT_DRONE_OPEMMV_CMD'                           = 280,
+  'EXT_DRONE_CIRCLE'                               = 276,
 
   /**
    * xinguangfei all drone turn
@@ -2901,19 +2853,7 @@ export enum MavCmd {
    * @param6 Empty
    * @param7 timestemp
    */
-  'EXT_ALL_DRONE_TURN'                             = 281,
-
-  /**
-   * xinguangfei
-   * @param1 ROLL (min: 0, max: 1) ROLL
-   * @param1 div (min: 0, max: 1) //front:03/behind:04/left:05/right:06/
-   * @param3 Empty
-   * @param4 Empty
-   * @param5 Empty
-   * @param6 Empty
-   * @param7 timestemp
-   */
-  'EXT_DRONE_EXTRA_ACTIONS'                        = 282,
+  'EXT_ALL_DRONE_TURN'                             = 277,
 
   /**
    * xinguangfei
@@ -2925,7 +2865,7 @@ export enum MavCmd {
    * @param6 Empty
    * @param7 timestemp
    */
-  'EXT_DRONE_HOVER'                                = 283,
+  'EXT_DRONE_HOVER'                                = 278,
 
   /**
    * xinguangfei
@@ -2937,7 +2877,79 @@ export enum MavCmd {
    * @param6 Empty
    * @param7 timestemp
    */
-  'EXT_DRONE_URGENT_DISARM'                        = 284,
+  'EXT_DRONE_URGENT_DISARM'                        = 279,
+
+  /**
+   * xinguangfei ext set mode
+   * @param1 mode 1:normal 2:track line 3:color square 4:specific tag
+   * @param2 Empty
+   * @param3 Empty
+   * @param4 Empty
+   * @param5 Empty
+   * @param6 Empty
+   * @param7 timestemp
+   */
+  'EXT_DRONE_SET_MODE'                             = 280,
+
+  /**
+   * xinguangfei ext set mode
+   * @param1 L_L Min detection value of color block L channel
+   * @param2 L_H Max detection value of color block L channel
+   * @param3 A_L Min detection value of color block A channel
+   * @param4 A_H Max detection value of color block A channel
+   * @param5 B_L Min detection value of color block B channel
+   * @param6 B_H Max detection value of color block B channel
+   * @param7 timestemp
+   */
+  'EXT_DRONE_VISION_DETECT_MODE_SET'               = 281,
+
+  /**
+   * xinguangfei ext goto target loc
+   * @param1 target_X null
+   * @param2 target_Y null
+   * @param3 target_Z null
+   * @param4 Empty
+   * @param5 Empty
+   * @param6 Empty
+   * @param7 timestemp
+   */
+  'EXT_DRONE_GOTO_CMD'                             = 282,
+
+  /**
+   * xinguangfei ext goto target loc
+   * @param1 cmd (min: 0, max: 1) 0:fllowline 1:lock apritag 2:find color block
+   * @param2 x Distance[m] (min: -1000, max: 1000) x Distance
+   * @param3 y Distance[m] (min: -1000, max: 1000) y Distance
+   * @param4 z Distance[m] (min: -200, max: 200) z Distance
+   * @param5 Empty
+   * @param6 Empty
+   * @param7 timestemp
+   */
+  'EXT_DRONE_OPEMMV_CMD'                           = 283,
+
+  /**
+   * xinguangfei
+   * @param1 ROLL (min: 0, max: 1) ROLL
+   * @param1 div (min: 0, max: 1) //front:03/behind:04/left:05/right:06/
+   * @param3 Empty
+   * @param4 Empty
+   * @param5 Empty
+   * @param6 Empty
+   * @param7 timestemp
+   */
+  'EXT_DRONE_EXTRA_ACTIONS'                        = 284,
+
+  /**
+   * xinguangfei ext change speed
+   * @param1 R (min: 0, max: 255) R
+   * @param2 G (min: 0, max: 255) G
+   * @param3 B (min: 0, max: 255) b
+   * @param4 Breathe (min: 0, max: 1) Breathe
+   * @param5 rainbow (min: 0, max: 1) rainbow
+   * @param6 Empty
+   * @param7 timestemp
+   */
+  'EXT_DRONE_LIGHT_RGB'                            = 285,
 
   /**
    * xinguangfei ext set mode
@@ -28903,6 +28915,58 @@ export class ExtDroneLandCommand extends CommandLong {
 }
 
 /**
+ * xingangfei ext set absolute height
+ */
+export class ExtDroneSetHeghtCommand extends CommandLong {
+  constructor(targetSystem = 1, targetComponent = 1) {
+    super()
+    this.command = MavCmd.EXT_DRONE_SET_HEGHT as number
+    this.targetSystem = targetSystem
+    this.targetComponent = targetComponent
+  }
+
+  /**
+   * distance
+   *
+   * @units cm
+   * @min: 0
+   * @max: 200
+   */
+  get height() {
+    return this._param1
+  }
+  set height(value: number) {
+    this._param1 = value
+  }
+}
+
+/**
+ * xinguangfei ext change speed
+ */
+export class ExtDroneChangeSpeedCommand extends CommandLong {
+  constructor(targetSystem = 1, targetComponent = 1) {
+    super()
+    this.command = MavCmd.EXT_DRONE_CHANGE_SPEED as number
+    this.targetSystem = targetSystem
+    this.targetComponent = targetComponent
+  }
+
+  /**
+   * speed
+   *
+   * @units cm/s
+   * @min: 0
+   * @max: 200
+   */
+  get speed() {
+    return this._param1
+  }
+  set speed(value: number) {
+    this._param1 = value
+  }
+}
+
+/**
  * xingangfei ext command move
  */
 export class ExtDroneMoveCommand extends CommandLong {
@@ -28952,57 +29016,6 @@ export class ExtDroneMoveCommand extends CommandLong {
   }
   set speed(value: number) {
     this._param3 = value
-  }
-
-  /**
-   * 0 relative high 1:absolute high
-   *
-   * @min: 0
-   * @max: 1
-   */
-  get relative_or_absolute() {
-    return this._param4
-  }
-  set relative_or_absolute(value: number) {
-    this._param4 = value
-  }
-}
-
-/**
- * xingangfei ext command circle
- */
-export class ExtDroneCircleCommand extends CommandLong {
-  constructor(targetSystem = 1, targetComponent = 1) {
-    super()
-    this.command = MavCmd.EXT_DRONE_CIRCLE as number
-    this.targetSystem = targetSystem
-    this.targetComponent = targetComponent
-  }
-
-  /**
-   * 0 Counterclockwise 1 clockwise
-   *
-   * @min: 0
-   * @max: 1
-   */
-  get direction() {
-    return this._param1
-  }
-  set direction(value: number) {
-    this._param1 = value
-  }
-
-  /**
-   * degrees
-   *
-   * @min: 0
-   * @max: 360
-   */
-  get degrees() {
-    return this._param2
-  }
-  set degrees(value: number) {
-    this._param2 = value
   }
 }
 
@@ -29061,105 +29074,115 @@ export class ExtDroneWaypointCommand extends CommandLong {
 }
 
 /**
- * xinguangfei ext change speed
+ * xingangfei ext command circle
  */
-export class ExtDroneChangeSpeedCommand extends CommandLong {
+export class ExtDroneCircleCommand extends CommandLong {
   constructor(targetSystem = 1, targetComponent = 1) {
     super()
-    this.command = MavCmd.EXT_DRONE_CHANGE_SPEED as number
+    this.command = MavCmd.EXT_DRONE_CIRCLE as number
     this.targetSystem = targetSystem
     this.targetComponent = targetComponent
   }
 
   /**
-   * speed
+   * 0 Counterclockwise 1 clockwise
    *
-   * @units cm/s
    * @min: 0
-   * @max: 200
+   * @max: 1
    */
-  get speed() {
+  get direction() {
     return this._param1
   }
-  set speed(value: number) {
+  set direction(value: number) {
+    this._param1 = value
+  }
+
+  /**
+   * degrees
+   *
+   * @min: 0
+   * @max: 360
+   */
+  get degrees() {
+    return this._param2
+  }
+  set degrees(value: number) {
+    this._param2 = value
+  }
+}
+
+/**
+ * xinguangfei all drone turn
+ */
+export class ExtAllDroneTurnCommand extends CommandLong {
+  constructor(targetSystem = 1, targetComponent = 1) {
+    super()
+    this.command = MavCmd.EXT_ALL_DRONE_TURN as number
+    this.targetSystem = targetSystem
+    this.targetComponent = targetComponent
+  }
+
+  /**
+   * 1 lockyaw
+   *
+   * @min: 0
+   * @max: 1
+   */
+  get lockyaw() {
+    return this._param1
+  }
+  set lockyaw(value: number) {
     this._param1 = value
   }
 }
 
 /**
- * xinguangfei ext change speed
+ * xinguangfei
  */
-export class ExtDroneLightRgbCommand extends CommandLong {
+export class ExtDroneHoverCommand extends CommandLong {
   constructor(targetSystem = 1, targetComponent = 1) {
     super()
-    this.command = MavCmd.EXT_DRONE_LIGHT_RGB as number
+    this.command = MavCmd.EXT_DRONE_HOVER as number
     this.targetSystem = targetSystem
     this.targetComponent = targetComponent
   }
 
   /**
-   * R
+   * 1：hover
    *
    * @min: 0
-   * @max: 255
+   * @max: 1
    */
-  get r() {
+  get cmd() {
     return this._param1
   }
-  set r(value: number) {
+  set cmd(value: number) {
     this._param1 = value
   }
+}
 
-  /**
-   * G
-   *
-   * @min: 0
-   * @max: 255
-   */
-  get g() {
-    return this._param2
-  }
-  set g(value: number) {
-    this._param2 = value
-  }
-
-  /**
-   * b
-   *
-   * @min: 0
-   * @max: 255
-   */
-  get b() {
-    return this._param3
-  }
-  set b(value: number) {
-    this._param3 = value
+/**
+ * xinguangfei
+ */
+export class ExtDroneUrgentDisarmCommand extends CommandLong {
+  constructor(targetSystem = 1, targetComponent = 1) {
+    super()
+    this.command = MavCmd.EXT_DRONE_URGENT_DISARM as number
+    this.targetSystem = targetSystem
+    this.targetComponent = targetComponent
   }
 
   /**
-   * Breathe
+   * 1：disarm
    *
    * @min: 0
    * @max: 1
    */
-  get breathe() {
-    return this._param4
+  get cmd() {
+    return this._param1
   }
-  set breathe(value: number) {
-    this._param4 = value
-  }
-
-  /**
-   * rainbow
-   *
-   * @min: 0
-   * @max: 1
-   */
-  get rainbow() {
-    return this._param5
-  }
-  set rainbow(value: number) {
-    this._param5 = value
+  set cmd(value: number) {
+    this._param1 = value
   }
 }
 
@@ -29188,10 +29211,10 @@ export class ExtDroneSetModeCommand extends CommandLong {
 /**
  * xinguangfei ext set mode
  */
-export class ExtDroneVersionDetectModeSetCommand extends CommandLong {
+export class ExtDroneVisionDetectModeSetCommand extends CommandLong {
   constructor(targetSystem = 1, targetComponent = 1) {
     super()
-    this.command = MavCmd.EXT_DRONE_VERSION_DETECT_MODE_SET as number
+    this.command = MavCmd.EXT_DRONE_VISION_DETECT_MODE_SET as number
     this.targetSystem = targetSystem
     this.targetComponent = targetComponent
   }
@@ -29367,31 +29390,6 @@ export class ExtDroneOpemmvCmdCommand extends CommandLong {
 }
 
 /**
- * xinguangfei all drone turn
- */
-export class ExtAllDroneTurnCommand extends CommandLong {
-  constructor(targetSystem = 1, targetComponent = 1) {
-    super()
-    this.command = MavCmd.EXT_ALL_DRONE_TURN as number
-    this.targetSystem = targetSystem
-    this.targetComponent = targetComponent
-  }
-
-  /**
-   * 1 lockyaw
-   *
-   * @min: 0
-   * @max: 1
-   */
-  get lockyaw() {
-    return this._param1
-  }
-  set lockyaw(value: number) {
-    this._param1 = value
-  }
-}
-
-/**
  * xinguangfei
  */
 export class ExtDroneExtraActionsCommand extends CommandLong {
@@ -29430,52 +29428,79 @@ export class ExtDroneExtraActionsCommand extends CommandLong {
 }
 
 /**
- * xinguangfei
+ * xinguangfei ext change speed
  */
-export class ExtDroneHoverCommand extends CommandLong {
+export class ExtDroneLightRgbCommand extends CommandLong {
   constructor(targetSystem = 1, targetComponent = 1) {
     super()
-    this.command = MavCmd.EXT_DRONE_HOVER as number
+    this.command = MavCmd.EXT_DRONE_LIGHT_RGB as number
     this.targetSystem = targetSystem
     this.targetComponent = targetComponent
   }
 
   /**
-   * 1：hover
+   * R
    *
    * @min: 0
-   * @max: 1
+   * @max: 255
    */
-  get cmd() {
+  get r() {
     return this._param1
   }
-  set cmd(value: number) {
+  set r(value: number) {
     this._param1 = value
-  }
-}
-
-/**
- * xinguangfei
- */
-export class ExtDroneUrgentDisarmCommand extends CommandLong {
-  constructor(targetSystem = 1, targetComponent = 1) {
-    super()
-    this.command = MavCmd.EXT_DRONE_URGENT_DISARM as number
-    this.targetSystem = targetSystem
-    this.targetComponent = targetComponent
   }
 
   /**
-   * 1：disarm
+   * G
+   *
+   * @min: 0
+   * @max: 255
+   */
+  get g() {
+    return this._param2
+  }
+  set g(value: number) {
+    this._param2 = value
+  }
+
+  /**
+   * b
+   *
+   * @min: 0
+   * @max: 255
+   */
+  get b() {
+    return this._param3
+  }
+  set b(value: number) {
+    this._param3 = value
+  }
+
+  /**
+   * Breathe
    *
    * @min: 0
    * @max: 1
    */
-  get cmd() {
-    return this._param1
+  get breathe() {
+    return this._param4
   }
-  set cmd(value: number) {
-    this._param1 = value
+  set breathe(value: number) {
+    this._param4 = value
+  }
+
+  /**
+   * rainbow
+   *
+   * @min: 0
+   * @max: 1
+   */
+  get rainbow() {
+    return this._param5
+  }
+  set rainbow(value: number) {
+    this._param5 = value
   }
 }
 
@@ -33398,19 +33423,20 @@ export const COMMANDS: MavLinkCommandRegistry = {
   [MavCmd.OBLIQUE_SURVEY]: ObliqueSurveyCommand,
   [MavCmd.EXT_DRONE_TAKEOFF]: ExtDroneTakeoffCommand,
   [MavCmd.EXT_DRONE_LAND]: ExtDroneLandCommand,
-  [MavCmd.EXT_DRONE_MOVE]: ExtDroneMoveCommand,
-  [MavCmd.EXT_DRONE_CIRCLE]: ExtDroneCircleCommand,
-  [MavCmd.EXT_DRONE_WAYPOINT]: ExtDroneWaypointCommand,
+  [MavCmd.EXT_DRONE_SET_HEGHT]: ExtDroneSetHeghtCommand,
   [MavCmd.EXT_DRONE_CHANGE_SPEED]: ExtDroneChangeSpeedCommand,
-  [MavCmd.EXT_DRONE_LIGHT_RGB]: ExtDroneLightRgbCommand,
-  [MavCmd.EXT_DRONE_SET_MODE]: ExtDroneSetModeCommand,
-  [MavCmd.EXT_DRONE_VERSION_DETECT_MODE_SET]: ExtDroneVersionDetectModeSetCommand,
-  [MavCmd.EXT_DRONE_GOTO_CMD]: ExtDroneGotoCmdCommand,
-  [MavCmd.EXT_DRONE_OPEMMV_CMD]: ExtDroneOpemmvCmdCommand,
+  [MavCmd.EXT_DRONE_MOVE]: ExtDroneMoveCommand,
+  [MavCmd.EXT_DRONE_WAYPOINT]: ExtDroneWaypointCommand,
+  [MavCmd.EXT_DRONE_CIRCLE]: ExtDroneCircleCommand,
   [MavCmd.EXT_ALL_DRONE_TURN]: ExtAllDroneTurnCommand,
-  [MavCmd.EXT_DRONE_EXTRA_ACTIONS]: ExtDroneExtraActionsCommand,
   [MavCmd.EXT_DRONE_HOVER]: ExtDroneHoverCommand,
   [MavCmd.EXT_DRONE_URGENT_DISARM]: ExtDroneUrgentDisarmCommand,
+  [MavCmd.EXT_DRONE_SET_MODE]: ExtDroneSetModeCommand,
+  [MavCmd.EXT_DRONE_VISION_DETECT_MODE_SET]: ExtDroneVisionDetectModeSetCommand,
+  [MavCmd.EXT_DRONE_GOTO_CMD]: ExtDroneGotoCmdCommand,
+  [MavCmd.EXT_DRONE_OPEMMV_CMD]: ExtDroneOpemmvCmdCommand,
+  [MavCmd.EXT_DRONE_EXTRA_ACTIONS]: ExtDroneExtraActionsCommand,
+  [MavCmd.EXT_DRONE_LIGHT_RGB]: ExtDroneLightRgbCommand,
   [MavCmd.EXT_DRONE_TOTAL]: ExtDroneTotalCommand,
   [MavCmd.ACTUATOR_TEST]: ActuatorTestCommand,
   [MavCmd.CONFIGURE_ACTUATOR]: ConfigureActuatorCommand,
