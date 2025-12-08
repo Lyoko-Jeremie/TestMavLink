@@ -13,6 +13,7 @@ import * as commonACFly from './Owl02Lib/commonACFly';
 import * as minimalACFly from './Owl02Lib/minimalACFly';
 import {getNowTimestampMsUintFloat, mathMod} from "./AirplaneTimestamp";
 import {PortStateEventInterface} from "./PortStateEventInterface";
+import {UtilTimer} from "./utils/UtilTimer";
 
 // 命令应答结果常量（根据协议文档）
 const RECEIVE_COMMAND = 1;  // 接收到命令
@@ -20,27 +21,20 @@ const FINISH_COMMAND = 2;  // 完成动作
 const COMMAND_ERROR = 3;  // 拒绝执行指令
 
 /**
- * 命令状态追踪
+ * 当前命令重发状态（简化版本 - 只维护一个命令）
  */
-class CommandStatus {
-    command: number;
-    sequence: number;  // 命令序列号，用于区分同一命令的不同调用
-    timestamp: number;  // Param7时间戳（整数毫秒），用于避免重复包
-    receiveCount: number = 0;  // 接收应答计数
-    finishCount: number = 0;  // 完成应答计数
+class CurrentCommandRetry {
+    msg: commonACFly.CommandLong;
+    timestamp: number;  // Param7时间戳（整数毫秒）
+    retryCount: number = 0;
+    timer?: UtilTimer;  // 重发定时器
     isReceived: boolean = false;
     isFinished: boolean = false;
     isError: boolean = false;
-    isStopped: boolean = false;  // 标记是否被停止
-    lastUpdate: number;  // 最后更新时间
-    createTime: number;  // 创建时间
 
-    constructor(command: number, sequence: number, timestamp: number) {
-        this.command = command;
-        this.sequence = sequence;
+    constructor(msg: commonACFly.CommandLong, timestamp: number) {
+        this.msg = msg;
         this.timestamp = timestamp;
-        this.lastUpdate = Date.now();
-        this.createTime = Date.now();
     }
 }
 
@@ -75,16 +69,12 @@ export class AirplaneOwl02 implements AirplaneOwl02Interface {
     protected packStream = new Subject<MavLinkPacketRecord>();
     protected ackPackStream = new BehaviorSubject<PackAndDataType<commonACFly.CommandAck> | undefined>(undefined);
 
-    // 命令状态追踪 - 使用 "command-sequence" 作为键
-    protected commandStatus: Map<string, CommandStatus> = new Map();
-    protected commandSequence: number = 0;  // 命令序列号生成器
-    protected currentActiveCommandKey?: string;  // 当前正在执行的命令序列号（用于指令队列模式）
+    // 当前命令重发状态（只维护一个）
+    protected currentRetry?: CurrentCommandRetry;
 
     // 重发配置
     protected maxRetries: number = 3;  // 最大重发次数
-    protected retryTimeout: number = 2000;  // 重发超时时间（毫秒）
-    protected asyncMode: boolean = true;  // 异步模式：不阻塞等待应答
-    protected queueMode: boolean = true;  // 队列模式，新指令到来时停止旧指令重试
+    protected retryInterval: number = 2000;  // 重发间隔时间（毫秒）
 
     protected portCloseEventSub;
 
@@ -120,8 +110,8 @@ export class AirplaneOwl02 implements AirplaneOwl02Interface {
         this.commander = new AirplaneOwl02Commander(this);
         this.portCloseEventSub = this.portStateEvent.portCloseEvent.subscribe({
             next: () => {
-                // closed port , stop all commands
-                this.stopAllCommands();
+                // closed port, stop retry
+                this.stopCurrentRetry();
             },
         })
     }
@@ -174,191 +164,112 @@ export class AirplaneOwl02 implements AirplaneOwl02Interface {
      * @param asyncMode 是否异步模式（undefined时使用实例默认值）
      * @return 异步模式返回Promise对象，同步模式返回是否成功
      */
-    public async sendMsgCommandWithRetry<M extends commonACFly.CommandLong>(
-        msg: M,
-        waitForFinish: boolean = false,
-        timeout: number = 5000,
-        asyncMode?: boolean
-    ): Promise<boolean> {
+    /**
+     * 发送命令并自动重试（简化版本）
+     * 每次只维护最后一个命令的重发状态
+     * @param msg 命令消息
+     */
+    public async sendMsgCommandWithRetry<M extends commonACFly.CommandLong>(msg: M): Promise<void> {
         if (!this.portStateEvent.portIsOpen()) {
-            return false;
+            return;
         }
 
-        // 确定是否使用异步模式
-        const useAsync = asyncMode !== undefined ? asyncMode : this.asyncMode;
-
-        // 生成命令序列号和时间戳
-        const sequence = this.getNextSequence();
-        // 使用当前时间戳（毫秒级整数），限制在 0 到 8388607 (2^23 - 1) 范围内
-        const timestamp = Math.floor(Date.now()) & 0x7FFFFF;
-        const key = `${msg.command}-${sequence}`;
+        // 停止之前的重发
+        this.stopCurrentRetry();
 
         // 准备消息
         msg.targetComponent = 1;
         msg.targetSystem = 1;
-        msg._param7 = timestamp;  // 使用时间戳作为param7
+        const timestamp = Math.floor(Date.now()) & 0x7FFFFF;  // 23位时间戳
+        msg._param7 = timestamp;
 
-        // 创建命令状态
-        const status = new CommandStatus(msg.command, sequence, timestamp);
-        this.commandStatus.set(key, status);
+        // 创建新的重发状态
+        this.currentRetry = new CurrentCommandRetry(msg, timestamp);
 
-        // 如果启用队列模式，且当前有活动命令，则先停止当前命令
-        if (this.queueMode && this.currentActiveCommandKey && this.currentActiveCommandKey !== key) {
-            const oldKey = this.currentActiveCommandKey;
-            const oldStatus = this.commandStatus.get(oldKey);
+        // 立即发送第一次
+        await this.sendCommandOnce(msg);
 
-            // 检查旧命令是否还在执行中（未收到ACK）
-            if (oldStatus && !oldStatus.isReceived && !oldStatus.isFinished && !oldStatus.isStopped) {
-                oldStatus.isStopped = true;
-                console.warn(
-                    `⚠️ 警告：新指令 ${msg.command}(seq=${sequence}, ts=${timestamp}) 到来时，` +
-                    `上一个指令 ${oldStatus.command}(seq=${oldStatus.sequence}, ts=${oldStatus.timestamp}) 仍未发送成功，停止重试上一个指令`
-                );
-            }
+        // 启动重发定时器
+        this.startRetryTimer();
+    }
+
+    /**
+     * 发送一次命令
+     */
+    protected async sendCommandOnce(msg: commonACFly.CommandLong): Promise<void> {
+        if (!this.currentRetry) return;
+
+        await this.manager.m.sendMsg(msg, this.targetChannelId);
+        this.currentRetry.retryCount++;
+
+        console.log(
+            `[AirplaneOwl02] Sent command ${msg.command} ts=${this.currentRetry.timestamp} ` +
+            `(attempt ${this.currentRetry.retryCount}/${this.maxRetries})`
+        );
+    }
+
+    /**
+     * 启动重发定时器
+     */
+    protected startRetryTimer(): void {
+        if (!this.currentRetry) return;
+
+        if (this.currentRetry.timer) {
+            this.currentRetry.timer.start();
         }
 
-        // 更新当前活动命令
-        this.currentActiveCommandKey = key;
+        this.currentRetry.timer = new UtilTimer(async () => {
+                if (!this.currentRetry) return;
 
-        // 定义实际执行重试的函数
-        const retryTask = async (): Promise<boolean> => {
-            let retryCount = 0;
-            const startTime = Date.now();
-
-            while (retryCount < this.maxRetries) {
-                // 检查是否已被停止
-                const currentStatus = this.commandStatus.get(key);
-                if (currentStatus?.isStopped) {
-                    console.log(`Command ${msg.command} seq=${sequence} ts=${timestamp} stopped before sending`);
-                    this.cleanupActiveCommand(key);
-                    return false;
+                // 检查是否已收到确认
+                if (this.currentRetry.isReceived || this.currentRetry.isFinished) {
+                    this.stopCurrentRetry();
+                    return;
                 }
 
-                // 发送命令
-                await this.manager.m.sendMsg(msg, this.targetChannelId);
-                console.log(
-                    `Sent command ${msg.command} seq=${sequence} ts=${timestamp} to device ${this.targetChannelId} ` +
-                    `(attempt ${retryCount + 1}/${this.maxRetries})`
-                );
-
-                // 等待应答
-                const waitStart = Date.now();
-                while (Date.now() - waitStart < this.retryTimeout) {
-                    const status = this.commandStatus.get(key);
-                    if (status) {
-                        if (status.isError) {
-                            console.error(
-                                `Command ${msg.command} seq=${sequence} ts=${timestamp} rejected by device ${this.targetChannelId}`
-                            );
-                            this.cleanupActiveCommand(key);
-                            return false;
-                        }
-
-                        if (status.isReceived && !waitForFinish) {
-                            console.log(
-                                `Command ${msg.command} seq=${sequence} ts=${timestamp} received by device ${this.targetChannelId}`
-                            );
-                            this.cleanupActiveCommand(key);
-                            return true;
-                        }
-
-                        if (status.isFinished) {
-                            console.log(
-                                `Command ${msg.command} seq=${sequence} ts=${timestamp} finished by device ${this.targetChannelId}`
-                            );
-                            this.cleanupActiveCommand(key);
-                            return true;
-                        }
-
-                        // 检查是否被停止
-                        if (status.isStopped) {
-                            console.log(`Command ${msg.command} seq=${sequence} ts=${timestamp} stopped by new command`);
-                            this.cleanupActiveCommand(key);
-                            return false;
-                        }
-                    }
-
-                    // 检查总超时
-                    if (Date.now() - startTime > timeout) {
-                        console.warn(`Command ${msg.command} seq=${sequence} ts=${timestamp} timeout after ${timeout}ms`);
-                        this.cleanupActiveCommand(key);
-                        return false;
-                    }
-
-                    // 等待50ms再检查
-                    await new Promise(resolve => setTimeout(resolve, 50));
+                // 检查是否出错
+                if (this.currentRetry.isError) {
+                    console.error(`[AirplaneOwl02] Command ${this.currentRetry.msg.command} rejected by device`);
+                    this.stopCurrentRetry();
+                    return;
                 }
 
-                retryCount++;
-                if (retryCount < this.maxRetries) {
+                // 检查是否达到重发次数上限
+                if (this.currentRetry.retryCount >= this.maxRetries) {
                     console.warn(
-                        `Command ${msg.command} seq=${sequence} ts=${timestamp} no response, retrying... ` +
-                        `(${retryCount}/${this.maxRetries})`
+                        `[AirplaneOwl02] Command ${this.currentRetry.msg.command} ts=${this.currentRetry.timestamp} ` +
+                        `failed after ${this.maxRetries} attempts`
                     );
+                    this.stopCurrentRetry();
+                    return;
                 }
-            }
 
-            console.error(`Command ${msg.command} seq=${sequence} ts=${timestamp} failed after ${this.maxRetries} retries`);
-            this.cleanupActiveCommand(key);
-            return false;
-        };
-
-        if (useAsync) {
-            // 异步模式：不等待，立即返回，但任务在后台执行
-            retryTask().catch(err => {
-                console.error(`Command ${msg.command} seq=${sequence} ts=${timestamp} async error:`, err);
-            });
-            return true;  // 异步模式立即返回true表示已提交
-        } else {
-            // 同步模式：阻塞等待完成
-            return await retryTask();
-        }
+                // 继续重发
+                await this.sendCommandOnce(this.currentRetry.msg);
+            },
+            console,
+            this.retryInterval,
+        );
     }
 
     /**
-     * 获取下一个命令序列号
+     * 停止当前命令的重发
      */
-    protected getNextSequence(): number {
-        this.commandSequence++;
-        return this.commandSequence;
-    }
-
-    /**
-     * 清理活动命令状态
-     */
-    protected cleanupActiveCommand(key: string): void {
-        if (this.currentActiveCommandKey === key) {
-            this.currentActiveCommandKey = undefined;
+    protected stopCurrentRetry(): void {
+        if (this.currentRetry?.timer) {
+            this.currentRetry.timer.stop();
         }
-    }
-
-    /**
-     * 停止所有命令
-     */
-    protected stopAllCommands(): void {
-        for (const status of this.commandStatus.values()) {
-            status.isStopped = true;
-        }
-        this.currentActiveCommandKey = undefined;
+        this.currentRetry = undefined;
     }
 
     /**
      * 配置重试参数
      * @param maxRetries 最大重发次数，默认3次
-     * @param retryTimeout 重发超时时间（毫秒），默认2000ms
-     * @param asyncMode 异步模式，默认true
-     * @param queueMode 队列模式（新指令到来时停止旧指令），默认true
+     * @param retryInterval 重发间隔时间（毫秒），默认2000ms
      */
-    public configureRetry(
-        maxRetries?: number,
-        retryTimeout?: number,
-        asyncMode?: boolean,
-        queueMode?: boolean
-    ): void {
+    public configureRetry(maxRetries?: number, retryInterval?: number): void {
         if (maxRetries !== undefined) this.maxRetries = maxRetries;
-        if (retryTimeout !== undefined) this.retryTimeout = retryTimeout;
-        if (asyncMode !== undefined) this.asyncMode = asyncMode;
-        if (queueMode !== undefined) this.queueMode = queueMode;
+        if (retryInterval !== undefined) this.retryInterval = retryInterval;
     }
 
     /**
@@ -367,9 +278,7 @@ export class AirplaneOwl02 implements AirplaneOwl02Interface {
     public getRetryConfig() {
         return {
             maxRetries: this.maxRetries,
-            retryTimeout: this.retryTimeout,
-            asyncMode: this.asyncMode,
-            queueMode: this.queueMode,
+            retryInterval: this.retryInterval,
         };
     }
 
@@ -421,69 +330,39 @@ export class AirplaneOwl02 implements AirplaneOwl02Interface {
 
         console.log('[AirplaneOwl02] CommandAck:', p);
 
+        // 如果没有当前重发命令，忽略
+        if (!this.currentRetry) return;
+
         const cmdId = p.command;
         const result = p.result;
         // 获取ACK中的时间戳（在resultParam2中）
-        // 限制在23位范围内，与发送时保持一致
         const ackTimestamp = p.resultParam2 !== undefined ? (Math.floor(p.resultParam2) & 0x7FFFFF) : undefined;
 
         console.log('[AirplaneOwl02] ackTimestamp:', ackTimestamp);
 
-        // 根据命令ID和时间戳精确匹配命令实例
-        let updated = false;
-        for (const [key, status] of this.commandStatus.entries()) {
-            // 必须同时匹配命令ID和时间戳
-            if (status.command === cmdId) {
-                // 如果ACK包含时间戳，则必须匹配；否则更新所有该命令的实例（向后兼容）
-                if (ackTimestamp !== undefined && status.timestamp !== ackTimestamp) {
-                    continue;
-                }
-
-                status.lastUpdate = Date.now();
-
-                if (result === RECEIVE_COMMAND) {
-                    status.receiveCount++;
-                    if (status.receiveCount >= 1) {
-                        status.isReceived = true;
-                    }
-                    console.log(
-                        `Command ${cmdId} seq=${status.sequence} ts=${status.timestamp} received ACK ` +
-                        `(${status.receiveCount}/3)`
-                    );
-                    updated = true;
-
-                } else if (result === FINISH_COMMAND) {
-                    status.finishCount++;
-                    if (status.finishCount >= 1) {
-                        status.isFinished = true;
-                    }
-                    console.log(
-                        `Command ${cmdId} seq=${status.sequence} ts=${status.timestamp} finished ACK ` +
-                        `(${status.finishCount}/3)`
-                    );
-                    updated = true;
-
-                } else if (result === COMMAND_ERROR) {
-                    status.isError = true;
-                    console.error(
-                        `Command ${cmdId} seq=${status.sequence} ts=${status.timestamp} error from device ${this.targetChannelId}`
-                    );
-                    updated = true;
-                }
-            }
+        // 检查是否匹配当前命令
+        if (this.currentRetry.msg.command !== cmdId) {
+            return;  // 命令ID不匹配
+        }
+        if (ackTimestamp !== undefined && this.currentRetry.timestamp !== ackTimestamp) {
+            return;  // 时间戳不匹配
         }
 
-        // 清理超过10秒的旧命令状态
-        const currentTime = Date.now();
-        const keysToRemove: string[] = [];
-        for (const [key, status] of this.commandStatus.entries()) {
-            if (currentTime - status.createTime > 10000) {
-                keysToRemove.push(key);
-            }
-        }
-        for (const key of keysToRemove) {
-            this.commandStatus.delete(key);
-            console.log(`Cleaned up old command status: ${key}`);
+        // 更新状态并停止重发
+        if (result === RECEIVE_COMMAND) {
+            this.currentRetry.isReceived = true;
+            console.log(`✓ Command ${cmdId} ts=${this.currentRetry.timestamp} received`);
+            this.stopCurrentRetry();
+
+        } else if (result === FINISH_COMMAND) {
+            this.currentRetry.isFinished = true;
+            console.log(`✓ Command ${cmdId} ts=${this.currentRetry.timestamp} finished`);
+            this.stopCurrentRetry();
+
+        } else if (result === COMMAND_ERROR) {
+            this.currentRetry.isError = true;
+            console.error(`✗ Command ${cmdId} ts=${this.currentRetry.timestamp} rejected`);
+            this.stopCurrentRetry();
         }
     }
 
@@ -590,8 +469,7 @@ export class AirplaneOwl02 implements AirplaneOwl02Interface {
     }
 
     public destroy() {
-        this.stopAllCommands();
-        this.commandStatus.clear();
+        this.stopCurrentRetry();
         this.packStream.complete();
         this.ackPackStream.complete();
         this.cacheStateText.clear();
