@@ -323,18 +323,18 @@ port.on('open', async () => {
     flyManager.init();
     await sleep(1000);
 
-    // id 1 === airplane 2
+    // id 0 === airplane 1
     const f = await flyManager.getAirplane(2);
     await f.commander.unlock();
-    await sleep(2000);
+    await sleep(3000);
     // await f.commander.takeoff(100);
     // await sleep(3000);
     // await f.commander.land();
     // await sleep(3000);
     await f.commander.lock();
-    await sleep(500);
+    await sleep(2000);
     await f.commander.land();
-    await sleep(1000);
+    await sleep(5000);
 
     console.log('====== sendEnd');
 });
