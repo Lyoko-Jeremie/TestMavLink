@@ -325,14 +325,26 @@ port.on('open', async () => {
 
     // id 0 === airplane 1
     const f = await flyManager.getAirplane(2);
+
+    // change: 需要修改为，收到takeoff自动解锁
     await f.commander.unlock();
     await sleep(3000);
-    // await f.commander.takeoff(100);
-    // await sleep(3000);
-    // await f.commander.land();
-    // await sleep(3000);
-    await f.commander.lock();
-    await sleep(2000);
+
+    // bug: ack 有延迟。回程消息步率不稳定。
+    await f.commander.takeoff(100);
+    await sleep(8000);
+
+    await f.commander.back(50);
+    await sleep(3000);
+    // bug: 上一个动作没做完，会忽略新的命令
+    await f.commander.forward(50);
+    await sleep(3000);
+
+    // notice: lock 指令无效，需使用land替代
+    // await f.commander.lock();
+    // await sleep(2000);
+
+    // bug: 飞行速度较慢
     await f.commander.land();
     await sleep(5000);
 
