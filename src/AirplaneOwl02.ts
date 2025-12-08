@@ -178,9 +178,6 @@ export class AirplaneOwl02 implements AirplaneOwl02Interface {
         // 创建新的重发状态
         this.currentRetry = new CurrentCommandRetry(msg, timestamp);
 
-        // // 立即发送第一次
-        // await this.sendCommandOnce(msg);
-
         // 启动重发定时器
         this.startRetryTimer();
     }
