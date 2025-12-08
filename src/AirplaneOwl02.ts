@@ -343,10 +343,6 @@ export class AirplaneOwl02 implements AirplaneOwl02Interface {
 
         console.log('[AirplaneOwl02] ackTimestamp:', ackTimestamp);
 
-        // 检查是否匹配当前命令
-        if (this.currentRetry.msg.command !== cmdId) {
-            return;  // 命令ID不匹配
-        }
         if (ackTimestamp !== undefined && this.currentRetry.timestamp !== ackTimestamp) {
             return;  // 时间戳不匹配
         }
