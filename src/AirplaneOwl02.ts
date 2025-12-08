@@ -73,8 +73,8 @@ export class AirplaneOwl02 implements AirplaneOwl02Interface {
     protected currentRetry?: CurrentCommandRetry;
 
     // 重发配置
-    protected maxRetries: number = 3;  // 最大重发次数
-    protected retryInterval: number = 2000;  // 重发间隔时间（毫秒）
+    protected maxRetries: number = 5;  // 最大重发次数
+    protected retryInterval: number = 1000;  // 重发间隔时间（毫秒）
 
     protected portCloseEventSub;
 
@@ -186,8 +186,8 @@ export class AirplaneOwl02 implements AirplaneOwl02Interface {
         // 创建新的重发状态
         this.currentRetry = new CurrentCommandRetry(msg, timestamp);
 
-        // 立即发送第一次
-        await this.sendCommandOnce(msg);
+        // // 立即发送第一次
+        // await this.sendCommandOnce(msg);
 
         // 启动重发定时器
         this.startRetryTimer();
@@ -227,9 +227,11 @@ export class AirplaneOwl02 implements AirplaneOwl02Interface {
                     return;
                 }
 
+                const msg = this.currentRetry.msg;
+
                 // 检查是否出错
                 if (this.currentRetry.isError) {
-                    console.error(`[AirplaneOwl02] Command ${this.currentRetry.msg.command} rejected by device`);
+                    console.error(`[AirplaneOwl02] Command ${msg.command} rejected by device`);
                     this.stopCurrentRetry();
                     return;
                 }
@@ -237,7 +239,7 @@ export class AirplaneOwl02 implements AirplaneOwl02Interface {
                 // 检查是否达到重发次数上限
                 if (this.currentRetry.retryCount >= this.maxRetries) {
                     console.warn(
-                        `[AirplaneOwl02] Command ${this.currentRetry.msg.command} ts=${this.currentRetry.timestamp} ` +
+                        `[AirplaneOwl02] Command ${msg.command} ts=${this.currentRetry.timestamp} ` +
                         `failed after ${this.maxRetries} attempts`
                     );
                     this.stopCurrentRetry();
@@ -245,11 +247,12 @@ export class AirplaneOwl02 implements AirplaneOwl02Interface {
                 }
 
                 // 继续重发
-                await this.sendCommandOnce(this.currentRetry.msg);
+                await this.sendCommandOnce(msg);
             },
             console,
             this.retryInterval,
         );
+        this.currentRetry.timer.start();
     }
 
     /**
