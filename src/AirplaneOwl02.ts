@@ -157,16 +157,8 @@ export class AirplaneOwl02 implements AirplaneOwl02Interface {
     }
 
     /**
-     * 发送命令并自动重试（支持异步非阻塞模式）
-     * @param msg 命令消息
-     * @param waitForFinish 是否等待命令完成
-     * @param timeout 等待超时时间（毫秒）
-     * @param asyncMode 是否异步模式（undefined时使用实例默认值）
-     * @return 异步模式返回Promise对象，同步模式返回是否成功
-     */
-    /**
-     * 发送命令并自动重试（简化版本）
-     * 每次只维护最后一个命令的重发状态
+     * 发送命令并自动重试
+     * 每次只维护最后一次的命令的重发
      * @param msg 命令消息
      */
     public async sendMsgCommandWithRetry<M extends commonACFly.CommandLong>(msg: M): Promise<void> {
