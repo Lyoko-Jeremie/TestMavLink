@@ -10,6 +10,7 @@ import * as commonACFly from "./Owl02Lib/commonACFly";
 import * as minimalACFly from "./Owl02Lib/minimalACFly";
 import {getNowTimestampMsUintFloat} from "./AirplaneTimestamp";
 import {REGISTRY} from "./Owl02Lib/commonACFly";
+import {AirplaneManagerOwl02} from "./AirplaneManagerOwl02";
 
 // 替换 COM3 为你的串口路径，或从环境变量设置，可以使用 UsbTreeView 或从设备管理中查看当前所有串口
 const comPortString = process.env.COM_PORT_STRING || 'COM10';
@@ -185,29 +186,31 @@ const heartbeatTimer = new UtilTimer(
     500,
 );
 
+const flyManager = new AirplaneManagerOwl02(m);
+
 port.on('open', async () => {
     // the port is open - we're ready to send data
     // 串口已打开 - 准备发送数据
 
-    heartbeatTimer.start();
+    // heartbeatTimer.start();
 
-    // 构造一个心跳包，填充数据并发送
-    console.log('====== commandHeartbeat');
-    const commandHeartbeat = new minimalACFly.Heartbeat();
-    commandHeartbeat.systemStatus = minimalACFly.MavState.STANDBY;
-    // console.log(m.debugSerializeMavLinkMsg(commandHeartbeat));
-    // 将心跳包发送到设备ID 0
-    await m.sendMsg(commandHeartbeat, 0);
-    // commandHeartbeat.systemStatus = minimalACFly.MavState.BOOT;
-    // 将心跳包发送到设备ID 1
-    await m.sendMsg(commandHeartbeat, 1);
-    //
-    // commandHeartbeat.systemStatus = minimalACFly.MavState.POWEROFF;
-    // 将心跳包发送到设备ID 3
-    await m.sendMsg(commandHeartbeat, 3);
+    // // 构造一个心跳包，填充数据并发送
+    // console.log('====== commandHeartbeat');
+    // const commandHeartbeat = new minimalACFly.Heartbeat();
+    // commandHeartbeat.systemStatus = minimalACFly.MavState.STANDBY;
+    // // console.log(m.debugSerializeMavLinkMsg(commandHeartbeat));
+    // // 将心跳包发送到设备ID 0
+    // await m.sendMsg(commandHeartbeat, 0);
+    // // commandHeartbeat.systemStatus = minimalACFly.MavState.BOOT;
+    // // 将心跳包发送到设备ID 1
+    // await m.sendMsg(commandHeartbeat, 1);
+    // //
+    // // commandHeartbeat.systemStatus = minimalACFly.MavState.POWEROFF;
+    // // 将心跳包发送到设备ID 3
+    // await m.sendMsg(commandHeartbeat, 3);
     //
     // 模拟等待一段时间
-    await sleep(500);
+    // await sleep(500);
     //
     // // 构造一个系统时间包，填充数据并发送
     // console.log('====== commandSystemTime');
@@ -292,12 +295,12 @@ port.on('open', async () => {
     //     await sleep(50);
     // }
 
-    console.log('====== ExtDroneMoveCommand');
-    const move = new commonACFly.ExtDroneMoveCommand();
-    move.direction = 1;
-    move.distance = 100;
-    move._param7 = getNowTimestampMsUintFloat();
-    await m.sendMsg(move, 2);
+    // console.log('====== ExtDroneMoveCommand');
+    // const move = new commonACFly.ExtDroneMoveCommand();
+    // move.direction = 1;
+    // move.distance = 100;
+    // move._param7 = getNowTimestampMsUintFloat();
+    // await m.sendMsg(move, 2);
 
     // console.log('====== ExtDroneGotoCmdCommand');
     // const go = new commonACFly.ExtDroneGotoCmdCommand();
@@ -311,6 +314,25 @@ port.on('open', async () => {
     // const takeoff = new commonACFly.ExtDroneTakeoffCommand();
     // takeoff.height = 100;
     // await m.sendMsg(takeoff, 2);
+
+
+    console.log('====== init flyManager');
+
+    flyManager.init();
+    await sleep(1000);
+
+    // id 1 === airplane 2
+    const f = await flyManager.getAirplane(2);
+    await f.commander.unlock();
+    await sleep(1000);
+    // await f.commander.takeoff(100);
+    // await sleep(3000);
+    // await f.commander.land();
+    // await sleep(3000);
+    await f.commander.lock();
+    await sleep(500);
+    await f.commander.land();
+    await sleep(1000);
 
     console.log('====== sendEnd');
 });

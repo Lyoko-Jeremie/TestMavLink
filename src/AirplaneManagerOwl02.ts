@@ -36,10 +36,12 @@ export class AirplaneManagerOwl02 implements AirplaneManagerOwl02Interface {
         }
         this.isInit = true;
 
+        this.timerHeartbeat.start();
+
         this.uSubscription = this.m.getMavLinkAllPackAndDataObservable().subscribe({
             next: (data) => {
                 // 处理接收到的数据
-                console.log(`====== Received data [${data.id}]:`, data);
+                // console.log(`====== Received data [${data.id}]:`, data);
                 this.getAirplane(data.id)
                     .then((a) => {
                         return a.parseStateFromMavLink(data.packAndData);

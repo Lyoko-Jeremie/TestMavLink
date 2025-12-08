@@ -69,6 +69,8 @@ export class AirplaneOwl02 implements AirplaneOwl02Interface {
             commonACFly.MissionCurrent.MSG_ID,
             commonACFly.BatteryStatus.MSG_ID,
             commonACFly.BatteryStatusAcfly.MSG_ID,
+            commonACFly.SystemTime.MSG_ID,
+            commonACFly.SysStatus.MSG_ID,
         ]);
         this.commander = new AirplaneOwl02Commander(this);
     }
@@ -205,6 +207,7 @@ export class AirplaneOwl02 implements AirplaneOwl02Interface {
             func(data);
         } else {
             if (!this.cachedPacketIds.has(id)) {
+                // TODO only debug
                 console.warn('[AirplaneOwl02] Unknow pack: ', id, data);
             }
         }
@@ -277,6 +280,9 @@ export class AirplaneOwl02Commander {
     ) {
     }
 
+    /**
+     * !!! invalid !!!  use land() instead
+     */
     lock() {
         const p = new commonACFly.ComponentArmDisarmCommand();
         p.arm = 0;

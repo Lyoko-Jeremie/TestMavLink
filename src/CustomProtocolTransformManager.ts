@@ -73,7 +73,8 @@ export class MavLinkPacket2Data {
                 MSG_NAME: clazz.MSG_NAME,
             };
         } else {
-            console.warn('[MavLinkPacket2Data] Cannot decode packet :', packet.header.msgid, packet);
+            // TODO only debug
+            // console.warn('[MavLinkPacket2Data] Cannot decode packet :', packet.header.msgid, packet);
         }
         return undefined;
     }
