@@ -218,8 +218,8 @@ export class AirplaneOwl02 implements AirplaneOwl02Interface {
         return {
             lat: p.lat / 1e7,
             lon: p.lon / 1e7,
-            alt: p.alt / 1e4,
-            relativeAlt: p.relativeAlt / 1e4,
+            alt: p.alt / 1e3,
+            relativeAlt: p.relativeAlt / 1e3,
             vx: p.vx,
             vy: p.vy,
             vz: p.vz,
@@ -290,7 +290,7 @@ export class AirplaneOwl02Commander {
     }
 
     /**
-     * @param height m
+     * @param height cm
      */
     takeoff(height: number) {
         const p = new commonACFly.ExtDroneTakeoffCommand();
@@ -304,7 +304,7 @@ export class AirplaneOwl02Commander {
     land() {
         const p = new commonACFly.ExtDroneLandCommand();
         p.land_mode = 1;
-        p.landspeed = 0;
+        p.landspeed = 100;
         return this.airplane.sendMsgCommand(p);
     }
 
@@ -327,35 +327,35 @@ export class AirplaneOwl02Commander {
      * @param distance
      * @param speed
      */
-    move(forward: 1 | 2 | 3 | 4 | 5 | 6, distance: number, speed: number = 0) {
+    move(forward: 1 | 2 | 3 | 4 | 5 | 6, distance: number, speed: number = 100) {
         const p = new commonACFly.ExtDroneMoveCommand();
-        p.direction = 5;
+        p.direction = forward;
         p.distance = distance;
         p.speed = speed;
         return this.airplane.sendMsgCommand(p);
     }
 
-    up(distance: number, speed: number = 0) {
+    up(distance: number, speed?: number) {
         return this.move(1, distance, speed);
     }
 
-    down(distance: number, speed: number = 0) {
+    down(distance: number, speed?: number) {
         return this.move(2, distance, speed);
     }
 
-    forward(distance: number, speed: number = 0) {
+    forward(distance: number, speed?: number) {
         return this.move(3, distance, speed);
     }
 
-    back(distance: number, speed: number = 0) {
+    back(distance: number, speed?: number) {
         return this.move(4, distance, speed);
     }
 
-    left(distance: number, speed: number = 0) {
+    left(distance: number, speed?: number) {
         return this.move(5, distance, speed);
     }
 
-    right(distance: number, speed: number = 0) {
+    right(distance: number, speed?: number) {
         return this.move(6, distance, speed);
     }
 
