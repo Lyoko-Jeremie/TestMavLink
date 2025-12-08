@@ -7,5 +7,5 @@ export function getNowTimestampMsUintFloat(): number {
     // 限制在 0 到 8388607 (2^23 - 1) 范围内，确保float能精确表示
     const t = Math.floor(Date.now());
     // mod 8388608 to fit in float precision
-    return mathMod(t, 8388608);
+    return t  & 0x7FFFFF;  // 限制在23位
 }
