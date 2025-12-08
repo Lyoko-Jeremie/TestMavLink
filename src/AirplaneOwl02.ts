@@ -12,6 +12,7 @@ import {timeoutWithoutError} from "./utils/rxjsTimeoutWithoutError";
 import * as commonACFly from './Owl02Lib/commonACFly';
 import * as minimalACFly from './Owl02Lib/minimalACFly';
 import {getNowTimestampMsUintFloat, mathMod} from "./AirplaneTimestamp";
+import {PortStateEventInterface} from "./PortStateEventInterface";
 
 export interface MavLinkPacketRecord<D extends MavLinkData = MavLinkData> {
     time: moment.Moment;
@@ -44,9 +45,12 @@ export class AirplaneOwl02 implements AirplaneOwl02Interface {
     protected packStream = new Subject<MavLinkPacketRecord>();
     protected ackPackStream = new BehaviorSubject<PackAndDataType<commonACFly.CommandAck> | undefined>(undefined);
 
+    protected portCloseEventSub;
+
     constructor(
         public targetChannelId: number,
         public manager: AirplaneManagerOwl02Interface,
+        public portStateEvent: PortStateEventInterface,
     ) {
         this.parseTable = {
             [minimalACFly.Heartbeat.MSG_ID]: this.parseHeartbeat.bind(this),
@@ -73,6 +77,11 @@ export class AirplaneOwl02 implements AirplaneOwl02Interface {
             commonACFly.SysStatus.MSG_ID,
         ]);
         this.commander = new AirplaneOwl02Commander(this);
+        this.portCloseEventSub = this.portStateEvent.portCloseEvent.subscribe({
+            next: () => {
+                // closed port , stop all
+            },
+        })
     }
 
     protected isInit = false;
@@ -98,11 +107,17 @@ export class AirplaneOwl02 implements AirplaneOwl02Interface {
         this.packStream.next(record);
     }
 
-    public sendMsg<M extends Exclude<MavLinkData, commonACFly.CommandLong>>(msg: M) {
+    public async sendMsg<M extends Exclude<MavLinkData, commonACFly.CommandLong>>(msg: M) {
+        if (!this.portStateEvent.portIsOpen()) {
+            return undefined;
+        }
         return this.manager.m.sendMsg(msg, this.targetChannelId);
     }
 
-    public sendMsgCommand<M extends commonACFly.CommandLong>(msg: M) {
+    public async sendMsgCommand<M extends commonACFly.CommandLong>(msg: M) {
+        if (!this.portStateEvent.portIsOpen()) {
+            return undefined;
+        }
         msg.targetComponent = 1;
         msg.targetSystem = 1;
         msg._param7 = getNowTimestampMsUintFloat();
@@ -269,6 +284,7 @@ export class AirplaneOwl02 implements AirplaneOwl02Interface {
         this.ackPackStream.complete();
         this.cacheStateText.clear();
         this.cachedPacketRecord.clear();
+        this.portCloseEventSub.unsubscribe();
     }
 
 }

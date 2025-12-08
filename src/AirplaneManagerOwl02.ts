@@ -53,7 +53,7 @@ export class AirplaneManagerOwl02 implements AirplaneManagerOwl02Interface {
     public async getAirplane(id: number) {
         let airplane = this.airplane.get(id);
         if (!airplane) {
-            airplane = new AirplaneOwl02(id, this);
+            airplane = new AirplaneOwl02(id, this, this.m);
             await airplane.init();
             this.airplane.set(id, airplane);
         }

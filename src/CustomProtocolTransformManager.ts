@@ -14,6 +14,7 @@ import {
     ProtocolMode,
 } from "./CustomProtocolTransform";
 import {filter, map, Observable, Subject} from 'rxjs';
+import {PortStateEventInterface} from "./PortStateEventInterface";
 
 export type MavLinkPacket2DataProcessType<Data extends MavLinkData = MavLinkData> = {
     mavLinkData: Data,
@@ -169,7 +170,7 @@ export class MavLinkDecodeStream {
 
 }
 
-export class CustomProtocolTransformManager {
+export class CustomProtocolTransformManager implements PortStateEventInterface {
 
     // 序列号从1开始
     private seq = 1;
@@ -181,12 +182,19 @@ export class CustomProtocolTransformManager {
     mavLinkAllDataSubject: Subject<{ id: number, data: MavLinkPacket2DataProcessType }> = new Subject();
     mavLinkAllPackAndDataSubject: Subject<{ id: number, packAndData: PackAndDataType }> = new Subject();
 
+    portCloseEvent: Subject<void> = new Subject();
+
     constructor(
         public port: Duplex,
         public protocol: MavLinkProtocol,
         public REGISTRY: MavLinkPacketRegistry,
         public debug: boolean = false,
     ) {
+
+        port.on('close', () => {
+            // close event
+            this.portCloseEvent.next();
+        });
 
         // from SerialPort
         // 创建一个 PassThrough 流，用于从 SerialPort 读取数据，并加入自定义协议解析器
@@ -208,6 +216,10 @@ export class CustomProtocolTransformManager {
         });
         this.customProtocolWriteStream.pipe(new CustomProtocolTransformToSerialPort(debug)).pipe(port);
 
+    }
+
+    public portIsOpen(): boolean {
+        return !this.port.closed;
     }
 
     private onPacket(pack: CustomProtocolPackage): void {
