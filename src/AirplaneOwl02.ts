@@ -328,7 +328,7 @@ export class AirplaneOwl02 implements AirplaneOwl02Interface {
         this.ackPackStream.next(data as PackAndDataType<commonACFly.CommandAck>);
         const p = data.data.mavLinkData as commonACFly.CommandAck;
 
-        console.log('[AirplaneOwl02] CommandAck:', p);
+        // console.log('[AirplaneOwl02] CommandAck:', p);
 
         // 如果没有当前重发命令，忽略
         if (!this.currentRetry) return;

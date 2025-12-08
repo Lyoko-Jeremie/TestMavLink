@@ -138,6 +138,8 @@ m.getMavLinkAllDataObservable().subscribe({
                 // }
                 process.stdout.write(`${data.id}$`);
                 break;
+            case 'COMMAND_ACK':
+                break;
             default:
                 // sq.push('?');
                 // console.log(sq.join(''));
@@ -324,7 +326,7 @@ port.on('open', async () => {
     // id 1 === airplane 2
     const f = await flyManager.getAirplane(2);
     await f.commander.unlock();
-    await sleep(1000);
+    await sleep(2000);
     // await f.commander.takeoff(100);
     // await sleep(3000);
     // await f.commander.land();
